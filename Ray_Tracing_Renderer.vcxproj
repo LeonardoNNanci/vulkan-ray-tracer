@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="buffer.cpp" />
     <ClCompile Include="command_pool.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="presentation.cpp" />
@@ -155,9 +156,12 @@
     <None Include="shaders\wavefront.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="acceleration_structure.hpp" />
+    <ClInclude Include="buffer.hpp" />
     <ClInclude Include="builder.hpp" />
     <ClInclude Include="command_pool.hpp" />
     <ClInclude Include="presentation.hpp" />
+    <ClInclude Include="scene.hpp" />
     <ClInclude Include="setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
   </ItemGroup>
