@@ -1,0 +1,66 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_debug_printf : enable
+
+#include "raycommon.glsl"
+
+layout(location = 0) rayPayloadEXT hitPayload prd;
+
+layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(binding = 1, set = 0, rgba32f) uniform image2D image;
+
+layout(push_constant) uniform constants {
+    vec4 clearColor;
+    vec4 lightPosition;
+    float lightIntensity;
+    int lightType;
+    mat4 projInv;
+    mat4 viewInv;
+};
+
+void main() 
+{
+    // const ivec2 originalCenter = ivec2(gl_LaunchIDEXT.xy);
+    // const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
+    // const float distance = length(originalCenter - imageCenter);
+    // const int k = 2;
+    // const float radii = 100.;
+    // const int exp = int(distance / radii);
+    // float ki = pow(float(k), float(exp));
+    // //debugPrintfEXT("%f\n", ki);
+
+    // vec2 mod = vec2(originalCenter % int(ki));
+    // vec2 pixelCenter = vec2(originalCenter) - mod + ki*vec2(0.5);
+    // debugPrintfEXT("%v2i %% %d = %v2f\n", originalCenter, int(ki), mod);
+    
+
+    // //-----------------------------------------------------------
+    // //const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    // const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
+    // vec2 d = inUV * 2.0 - 1.0;
+
+    // vec4 origin    = viewInv * vec4(0, 0, 0, 1);
+    // vec4 target    = projInv * vec4(d.x, d.y, 1, 1);
+    // vec4 direction = viewInv * vec4(normalize(target.xyz), 0);
+
+    // uint  rayFlags = gl_RayFlagsOpaqueEXT;
+    // float tMin     = 0.001;
+    // float tMax     = 10000.0;
+
+    // traceRayEXT(topLevelAS, // acceleration structure
+    //     rayFlags,       // rayFlags
+    //     0xFF,           // cullMask
+    //     0,              // sbtRecordOffset
+    //     0,              // sbtRecordStride
+    //     0,              // missIndex
+    //     origin.xyz,     // ray origin
+    //     tMin,           // ray min range
+    //     direction.xyz,  // ray direction
+    //     tMax,           // ray max range
+    //     0               // payload (location = 0)
+    // );
+
+    // imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.0));
+    gsnSetPixel(vec4(1.));
+}
