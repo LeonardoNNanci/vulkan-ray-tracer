@@ -2,6 +2,9 @@
 
 #include "setup.hpp"
 
+VkInstance globalInstance;
+VkDevice globalDevice;
+
 IHasSetup::IHasSetup(std::shared_ptr<Setup> setup) : setup(setup) {};
 
 SetupBuilder SetupBuilder::addExtensions(RequiredExtensions extensions)
@@ -23,6 +26,10 @@ std::shared_ptr<Setup> SetupBuilder::build()
     this->setup->graphicsQueue.familyIndex = this->getQueueFamilyIndex(vk::QueueFlagBits::eGraphics);
     this->setup->device = this->createDevice();
     this->setup->graphicsQueue.handle = this->getQueue(this->setup->graphicsQueue.familyIndex);
+
+    globalInstance = static_cast<VkInstance>(this->setup->instance);
+    globalDevice = static_cast<VkDevice>(this->setup->device);
+
     return this->setup;
 }
 
@@ -115,4 +122,133 @@ vk::Queue SetupBuilder::getQueue(uint32_t familyIndex)
 Setup::~Setup() {
     this->device.destroy();
     this->instance.destroy();
+}
+
+VkResult vkCreateAccelerationStructureKHR(
+    VkDevice                                    device,
+    const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks* pAllocator,
+    VkAccelerationStructureKHR* pAccelerationStructure) {
+    auto func = reinterpret_cast<PFN_vkCreateAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCreateAccelerationStructureKHR"));
+    if (func == nullptr)
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    func(device, pCreateInfo, pAllocator, pAccelerationStructure);
+}
+
+void vkDestroyAccelerationStructureKHR(
+    VkDevice                                    device,
+    VkAccelerationStructureKHR                  accelerationStructure,
+    const VkAllocationCallbacks* pAllocator) {
+    auto func = reinterpret_cast<PFN_vkDestroyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkDestroyAccelerationStructureKHR"));
+    func(device, accelerationStructure, pAllocator);
+}
+
+void vkGetAccelerationStructureBuildSizesKHR(
+    VkDevice                                    device,
+    VkAccelerationStructureBuildTypeKHR         buildType,
+    const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo,
+    const uint32_t* pMaxPrimitiveCounts,
+    VkAccelerationStructureBuildSizesInfoKHR* pSizeInfo) {
+    auto func = reinterpret_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkGetDeviceProcAddr(device, "vkGetAccelerationStructureBuildSizesKHR"));
+    func(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pSizeInfo);
+}
+
+VkResult vkBuildAccelerationStructuresKHR(
+    VkDevice                                    device,
+    VkDeferredOperationKHR                      deferredOperation,
+    uint32_t                                    infoCount,
+    const VkAccelerationStructureBuildGeometryInfoKHR* pInfos,
+    const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos) {
+    auto func = reinterpret_cast<PFN_vkBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(device, "vkBuildAccelerationStructuresKHR"));
+    if (func == nullptr)
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    func(device, deferredOperation, infoCount, pInfos, ppBuildRangeInfos);
+}
+
+void vkCmdBuildAccelerationStructuresKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    infoCount,
+    const VkAccelerationStructureBuildGeometryInfoKHR* pInfos,
+    const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos) {
+    auto func = reinterpret_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkGetDeviceProcAddr(globalDevice, "vkCmdBuildAccelerationStructuresKHR"));
+    if (func == nullptr)
+        throw std::runtime_error("Could not load procedure 'vkCmdBuildAccelerationStructuresKHR'!");
+    func(commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
+
+}
+
+void vkCmdWriteAccelerationStructuresPropertiesKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    accelerationStructureCount,
+    const VkAccelerationStructureKHR* pAccelerationStructures,
+    VkQueryType                                 queryType,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery) {
+    auto func = reinterpret_cast<PFN_vkCmdWriteAccelerationStructuresPropertiesKHR>(vkGetDeviceProcAddr(globalDevice, "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+    if (func == nullptr)
+        throw std::runtime_error("Could not load procedure 'vkCmdBuildAccelerationStructuresKHR'!");
+    func(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
+}
+
+VkResult vkCopyAccelerationStructureKHR(
+    VkDevice                                    device,
+    VkDeferredOperationKHR                      deferredOperation,
+    const VkCopyAccelerationStructureInfoKHR* pInfo) {
+    auto func = reinterpret_cast<PFN_vkCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(device, "vkCopyAccelerationStructureKHR"));
+    if (func == nullptr)
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    func(device, deferredOperation, pInfo);
+}
+
+VkResult vkCreateRayTracingPipelinesKHR(
+    VkDevice                                    device,
+    VkDeferredOperationKHR                      deferredOperation,
+    VkPipelineCache                             pipelineCache,
+    uint32_t                                    createInfoCount,
+    const VkRayTracingPipelineCreateInfoKHR* pCreateInfos,
+    const VkAllocationCallbacks* pAllocator,
+    VkPipeline* pPipelines) {
+    auto func = reinterpret_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkGetDeviceProcAddr(device, "vkCreateRayTracingPipelinesKHR"));
+    if (func == nullptr)
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    func(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+}
+
+
+void vkCmdCopyAccelerationStructureKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkCopyAccelerationStructureInfoKHR* pInfo) {
+    auto func = reinterpret_cast<PFN_vkCmdCopyAccelerationStructureKHR>(vkGetDeviceProcAddr(globalDevice, "vkCmdCopyAccelerationStructureKHR"));
+    func(commandBuffer, pInfo);
+}
+
+VkResult vkGetRayTracingShaderGroupHandlesKHR(
+    VkDevice                                    device,
+    VkPipeline                                  pipeline,
+    uint32_t                                    firstGroup,
+    uint32_t                                    groupCount,
+    size_t                                      dataSize,
+    void*                                       pData) {
+    auto func = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetRayTracingShaderGroupHandlesKHR"));
+    return func(device, pipeline, firstGroup, groupCount, dataSize, pData);
+}
+
+void vkCmdTraceRaysKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkStridedDeviceAddressRegionKHR*      pRaygenShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR*      pMissShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR*      pHitShaderBindingTable,
+    const VkStridedDeviceAddressRegionKHR*      pCallableShaderBindingTable,
+    uint32_t                                    width,
+    uint32_t                                    height,
+    uint32_t                                    depth) {
+    auto func = reinterpret_cast<PFN_vkCmdTraceRaysKHR>(vkGetDeviceProcAddr(globalDevice, "vkCmdTraceRaysKHR"));
+    func(commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable, pHitShaderBindingTable, pCallableShaderBindingTable, width, height, depth);
+}
+
+VkDeviceAddress vkGetAccelerationStructureDeviceAddressKHR(
+    VkDevice                                    device,
+    const VkAccelerationStructureDeviceAddressInfoKHR* pInfo) {
+    auto func = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetAccelerationStructureDeviceAddressKHR"));
+    return func(device, pInfo);
 }

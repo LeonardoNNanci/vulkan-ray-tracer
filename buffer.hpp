@@ -10,7 +10,6 @@ public:
 	vk::DeviceMemory memory;
 	vk::DeviceSize offset = 0;
 	vk::DeviceSize size = 0;
-	vk::DeviceAddress address = NULL;
 	std::shared_ptr<CommandBuffer> commandBuffer;
 
 	Buffer(std::shared_ptr<Setup> setup);
@@ -18,11 +17,12 @@ public:
 	template<typename T>
 	void fill(std::vector<T> data);
 
-	vk::DeviceAddress getBufferDeviceAdress();
+	vk::DeviceAddress getDeviceAddress();
 
 	~Buffer();
 
 private:
+	vk::DeviceAddress address = NULL;
 	void copyBuffer(std::shared_ptr<Buffer> other);
 };
 

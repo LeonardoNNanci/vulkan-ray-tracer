@@ -80,7 +80,7 @@ uint32_t BufferBuilder::findMemoryType(uint32_t typeFilter) {
 
 Buffer::Buffer(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
 
-vk::DeviceAddress Buffer::getBufferDeviceAdress()
+vk::DeviceAddress Buffer::getDeviceAddress()
 {
 	if (this->address != NULL)
 		return this->address;
@@ -112,6 +112,7 @@ void Buffer::copyBuffer(std::shared_ptr<Buffer> source) {
 
 template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
 template void Buffer::fill<Vertex>(std::vector<Vertex> data);
+template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
 
 template <typename T>
 void Buffer::fill(std::vector<T> data) {

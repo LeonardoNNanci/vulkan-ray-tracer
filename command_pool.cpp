@@ -69,7 +69,10 @@ void CommandBuffer::resetFence() {
 
 void CommandBuffer::waitFinished()
 {
-    this->setup->device.waitForFences({ this->fence }, vk::True, UINT64_MAX);
+    if (this->fence != VK_NULL_HANDLE)
+        this->setup->device.waitForFences({ this->fence }, vk::True, UINT64_MAX);
+    else
+        this->queue.handle.waitIdle();
 }
 
 void CommandBuffer::destroyFence() {
