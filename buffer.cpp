@@ -112,6 +112,8 @@ void Buffer::copyBuffer(std::shared_ptr<Buffer> source) {
 template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
 template void Buffer::fill<Vertex>(std::vector<Vertex> data);
 template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
+template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
+template void Buffer::fill<ModelDescription>(std::vector<ModelDescription> data);
 
 template <typename T>
 void Buffer::fill(std::vector<T> data) {

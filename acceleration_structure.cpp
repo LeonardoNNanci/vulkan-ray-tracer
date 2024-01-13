@@ -4,7 +4,8 @@ AccelerationStructureBuilder::AccelerationStructureBuilder(std::shared_ptr<Setup
     : IHasSetup(setup), commandBuffer(commandBuffer) {}
 
 std::shared_ptr<AccelerationStructure> AccelerationStructureBuilder::build()
-{
+{   
+    this->commandBuffer->setFence();
     this->bottomLevelStructures.reserve(this->models.size());
     for (auto model : this->models) {
         this->bottomLevelStructures.emplace_back(createBottomLevel(model));
@@ -61,7 +62,9 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
         .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
         .build();
     vertexBuffer->fill(model.vertices);
+    this->commandBuffer->resetFence();
     indexBuffer->fill(model.indices);
+    this->commandBuffer->resetFence();
 
     vk::AccelerationStructureBuildRangeInfoKHR rangeInfo{
         .primitiveCount = static_cast<uint32_t>(model.indices.size() / 3), //faces
@@ -160,11 +163,11 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
 
         vk::AccelerationStructureInstanceKHR rayInst{
             .transform = {{{
-                    instance.transform[0][0], instance.transform[0][1], instance.transform[0][2], instance.transform[0][3],
-                    instance.transform[1][0], instance.transform[1][1], instance.transform[1][2], instance.transform[1][3],
-                    instance.transform[2][0], instance.transform[2][1], instance.transform[2][2], instance.transform[2][3]
+                    instance.transform[0].x, instance.transform[1].x, instance.transform[2].x, instance.transform[3].x,
+                    instance.transform[0].y, instance.transform[1].y, instance.transform[2].y, instance.transform[3].y,
+                    instance.transform[0].z, instance.transform[1].z, instance.transform[2].z, instance.transform[3].z
             }}},
-            .instanceCustomIndex = i++,
+            .instanceCustomIndex = modelIndex,
             .mask = 0xFF,
             .instanceShaderBindingTableRecordOffset = 0,
             .accelerationStructureReference = BLASAddress
@@ -247,6 +250,7 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
     this->commandBuffer->handle.buildAccelerationStructuresKHR({ buildInfo }, { &buildOffsetInfo });
     this->commandBuffer->submit();
     this->commandBuffer->waitFinished();
+    this->commandBuffer->resetFence();
 
     auto topLevelStructure = std::make_shared<TopLevelStructure>(this->setup);
     topLevelStructure->handle = handle;

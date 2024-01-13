@@ -36,8 +36,8 @@ private:
 	std::vector<vk::Semaphore> signalSemaphores;
 	vk::Fence fence = VK_NULL_HANDLE;
 
-
 	void destroyFence();
+
 };
 
 class CommandPool : private IHasSetup {

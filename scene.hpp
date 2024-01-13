@@ -17,29 +17,40 @@ struct Vertex {
 
 class Model3D {
 public:
-	//uint32_t index;
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
-	//std::shared_ptr<Buffer> vertexBuffer;
-	//std::shared_ptr<Buffer> indexBuffer;
 };
 
 class Instance {
 public:
-	glm::mat3x4 transform;
+	glm::mat4 transform;
 	uint32_t hitShaderOffset;
+	uint32_t modelId;
 
 	Instance(glm::mat4 transform, uint32_t hitShaderOffset);
 };
 
-//class SceneBuffersBuilder : public Builder<std::tuple<std::shared_ptr<Buffer>, std::shared_ptr<Buffer>>>, IHasSetup {
-//public:
-//	SceneBuffersBuilder(std::shared_ptr<Setup> setup);
-//
-//	SceneBuffersBuilder addModel(Model3D& model);
-//
-//	std::tuple<std::shared_ptr<Buffer>, std::shared_ptr<Buffer>> build();
-//
-//private:
-//	std::vector<Model3D&> models;
-//};
+class Scene {
+public:
+	std::shared_ptr<Buffer> vertexBuffer;
+	std::shared_ptr<Buffer> indexBuffer;
+	std::shared_ptr<Buffer> objectDescriptionBuffer;
+};
+
+struct ModelDescription {
+	alignas(4) uint32_t vertexStride;
+	alignas(4) uint32_t indexStride;
+};
+
+class SceneBuilder : public Builder<std::shared_ptr<Scene>>, IHasSetup {
+public:
+	SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer);
+
+	SceneBuilder addModel(Model3D model);
+
+	std::shared_ptr<Scene> build();
+
+private:
+	std::vector<Model3D> models;
+	std::shared_ptr<CommandBuffer> commandBuffer;
+};

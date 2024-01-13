@@ -22,22 +22,55 @@ std::array<vk::VertexInputAttributeDescription, 1> Vertex::getAttributeDescripti
 
 Instance::Instance(glm::mat4 transform, uint32_t hitShaderOffset) : transform(transform), hitShaderOffset(hitShaderOffset) {}
 
-//SceneBuffersBuilder::SceneBuffersBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
-//
-//SceneBuffersBuilder SceneBuffersBuilder::addModel(Model3D& model)
-//{
-//    model.index = this->models.size();
-//    this->models.push_back(model);
-//
-//    return *this;
-//}
-//
-//std::tuple<std::shared_ptr<Buffer>, std::shared_ptr<Buffer>> SceneBuffersBuilder::build()
-//{
-//    uint32_t vertexCount = 0;
-//    uint32_t indexCount = 0;
-//    for (auto& model : this->models) {
-//        vertexCount += model.vertices.size();
-//        indexCount += model.indices.size();
-//    }
-//}
+SceneBuilder::SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer) : IHasSetup(setup), commandBuffer(commandBuffer) {}
+
+SceneBuilder SceneBuilder::addModel(Model3D model)
+{
+    this->models.push_back(model);
+    return *this;
+}
+
+std::shared_ptr<Scene> SceneBuilder::build()
+{
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    std::vector<ModelDescription> objectDescriptions;
+
+    for (auto& model : this->models) {
+        objectDescriptions.push_back({
+            .vertexStride = static_cast<uint32_t>(vertices.size()),
+            .indexStride = static_cast<uint32_t>(indices.size())
+        });
+        vertices.insert(vertices.end(), model.vertices.begin(), model.vertices.end());
+        indices.insert(indices.end(), model.indices.begin(), model.indices.end());
+    }
+
+    auto vertexBuffer = BufferBuilder(this->setup)
+        .setSize(vertices.size() * sizeof(vertices[0]))
+        .setCommandBuffer(this->commandBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+        .build();
+    auto indexBuffer = BufferBuilder(this->setup)
+        .setSize(indices.size() * sizeof(indices[0]))
+        .setCommandBuffer(this->commandBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+        .build();
+    auto descriptionBuffer = BufferBuilder(this->setup)
+        .setSize(objectDescriptions.size() * sizeof(objectDescriptions[0]))
+        .setCommandBuffer(this->commandBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+        .build();
+    vertexBuffer->fill(vertices);
+    indexBuffer->fill(indices);
+    descriptionBuffer->fill(objectDescriptions);
+
+    auto scene = std::make_shared<Scene>();
+    scene->vertexBuffer = vertexBuffer;
+    scene->indexBuffer = indexBuffer;
+    scene->objectDescriptionBuffer = descriptionBuffer;
+
+    return scene;
+}
