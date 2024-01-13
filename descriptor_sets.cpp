@@ -68,9 +68,9 @@ DescriptorPool::~DescriptorPool() {
     this->setup->device.destroyDescriptorPool(this->handle);
 }
 
-RequiredExtensions DescriptorSetsBuilder::getRequiredExtensions()
+Requirements DescriptorSetsBuilder::getRequirements()
 {
-    RequiredExtensions extensions;
+    Requirements extensions;
     extensions.deviceExtensions = {
     };
     return extensions;

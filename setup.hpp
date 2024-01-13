@@ -1,6 +1,7 @@
 #pragma once
 
 #include<memory>
+#include<any>
 
 #include <vulkan/vulkan.hpp>
 
@@ -30,7 +31,7 @@ protected:
 	IHasSetup(std::shared_ptr<Setup> setup);
 };
 
-struct RequiredExtensions {
+struct Requirements {
 	std::vector<const char*> deviceExtensions;
 	std::vector<const char*> instanceExtensions;
 };
@@ -39,14 +40,14 @@ class SetupBuilder : public Builder<std::shared_ptr<Setup>> {
 public:
 	SetupBuilder() = default;
 
-	SetupBuilder addExtensions(RequiredExtensions extensions);
+	SetupBuilder addExtensions(Requirements extensions);
 
 	std::shared_ptr<Setup> build();
 
 private:
 	std::shared_ptr<Setup> setup;
 
-	RequiredExtensions extensions;
+	Requirements extensions;
 
 	vk::Instance createInstance();
 

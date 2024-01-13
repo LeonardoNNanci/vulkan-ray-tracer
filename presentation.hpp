@@ -32,7 +32,7 @@ class PresentationBuilder : public Builder<std::shared_ptr<Presentation>>, priva
 public:
 	PresentationBuilder(std::shared_ptr<Setup> setup);
 
-	static RequiredExtensions getRequiredExtensions();
+	static Requirements getRequirements();
 
 	std::shared_ptr<Presentation> build();
 

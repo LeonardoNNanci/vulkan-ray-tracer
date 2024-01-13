@@ -1,4 +1,3 @@
-#define VULKAN_HPP_NO_CONSTRUCTORS
 #include "acceleration_structure.hpp"
 
 AccelerationStructureBuilder::AccelerationStructureBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer)
@@ -29,9 +28,9 @@ AccelerationStructureBuilder AccelerationStructureBuilder::addInstance(Instance 
 	return *this;
 }
 
-RequiredExtensions AccelerationStructureBuilder::getRequiredExtensions()
+Requirements AccelerationStructureBuilder::getRequirements()
 {
-    RequiredExtensions extensions;
+    Requirements extensions;
     extensions.deviceExtensions = {
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME

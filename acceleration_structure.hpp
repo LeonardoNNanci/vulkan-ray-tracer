@@ -52,7 +52,7 @@ public:
 
 	AccelerationStructureBuilder addInstance(Instance instance, uint32_t modelIndex);
 
-	static RequiredExtensions getRequiredExtensions();
+	static Requirements getRequirements();
 
 	~AccelerationStructureBuilder();
 

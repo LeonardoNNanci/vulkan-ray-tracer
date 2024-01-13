@@ -13,7 +13,6 @@ layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 
 hitAttributeEXT vec3 attribs;
 layout(location=0) rayPayloadInEXT vec3 hitValue;
-layout(location=1) rayPayloadEXT bool isShadowed;
 
 layout(push_constant) uniform constants {
     vec4 clearColor;
@@ -37,42 +36,46 @@ void main()
 	int i1 = indexBuffer.i[3 * gl_PrimitiveID];
 	int i2 = indexBuffer.i[3 * gl_PrimitiveID + 1];
 	int i3 = indexBuffer.i[3 * gl_PrimitiveID + 2];
+    debugPrintfEXT("gl_PrimitiveID: %d\n", gl_PrimitiveID);
+    debugPrintfEXT("i1: %d\n", i1);
+    debugPrintfEXT("i2: %d\n", i2);
+    debugPrintfEXT("i3: %d\n", i3);
 	vec3 p1 = vertexBuffer.v[i1].pos.xyz;
 	vec3 p2 = vertexBuffer.v[i2].pos.xyz;
 	vec3 p3 = vertexBuffer.v[i3].pos.xyz;
 	vec3 surfaceNormal = normalize(cross((p2-p1), (p3-p1)));
 
 	float intensity = dot(surfaceNormal, normalize(hit2Light));
-    float attenuation = 1;
-    isShadowed = true;
+    // float attenuation = 1;
+    // isShadowed = true;
 
-	if(intensity > 0) {
-	    float tMin   = 0.001;
-        float tMax   = length(hit2Light);
-        vec3  origin = hitPoint;
-        vec3  rayDir = hit2Light;
-        uint  flags =
-            gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
-        isShadowed = true;
-        traceRayEXT(topLevelAS,  // acceleration structure
-                flags,       // rayFlags
-                0xFF,        // cullMask
-                0,           // sbtRecordOffset
-                0,           // sbtRecordStride
-                1,           // missIndex
-                origin,      // ray origin
-                tMin,        // ray min range
-                rayDir,      // ray direction
-                tMax,        // ray max range
-                1            // payload (location = 1)
-        );
+	// if(intensity > 0) {
+	//     float tMin   = 0.001;
+    //     float tMax   = length(hit2Light);
+    //     vec3  origin = hitPoint;
+    //     vec3  rayDir = hit2Light;
+    //     uint  flags =
+    //         gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
+    //     isShadowed = true;
+    //     traceRayEXT(topLevelAS,  // acceleration structure
+    //             flags,       // rayFlags
+    //             0xFF,        // cullMask
+    //             0,           // sbtRecordOffset
+    //             0,           // sbtRecordStride
+    //             1,           // missIndex
+    //             origin,      // ray origin
+    //             tMin,        // ray min range
+    //             rayDir,      // ray direction
+    //             tMax,        // ray max range
+    //             1            // payload (location = 1)
+    //     );
 
-        if(isShadowed)
-        {
-          attenuation = 0.3;
-        }
-	}
+    //     if(isShadowed)
+    //     {
+    //       attenuation = 0.3;
+    //     }
+	// }
 
 
-	hitValue = vec3(intensity * attenuation);
+	hitValue = vec3(intensity);
 }

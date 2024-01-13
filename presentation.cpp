@@ -1,4 +1,3 @@
-#define VULKAN_HPP_NO_CONSTRUCTORS
 #include "presentation.hpp"
 
 Presentation::Presentation(std::shared_ptr<Setup> setup) : IHasSetup(setup), window(NULL) {}
@@ -15,9 +14,9 @@ Presentation::~Presentation()
 
 PresentationBuilder::PresentationBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
 
-RequiredExtensions PresentationBuilder::getRequiredExtensions()
+Requirements PresentationBuilder::getRequirements()
 {	
-	RequiredExtensions extensions;
+	Requirements extensions;
 
 	glfwInit();
 

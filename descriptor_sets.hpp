@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include "builder.hpp"
+#include "acceleration_structure.hpp"
 
 class DescriptorPool : IHasSetup {
 public:
@@ -43,7 +44,7 @@ private:
 
 class DescriptorSetsBuilder : public Builder<std::vector<std::shared_ptr<DescriptorSet>>>, IHasSetup {
 public:
-	static RequiredExtensions getRequiredExtensions();
+	static Requirements getRequirements();
 	
 	DescriptorSetsBuilder(std::shared_ptr<Setup> setup);
 

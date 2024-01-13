@@ -20,4 +20,24 @@ std::array<vk::VertexInputAttributeDescription, 1> Vertex::getAttributeDescripti
     return { posDescription };
 }
 
-Instance::Instance(glm::mat3x4 transform, uint32_t hitShaderOffset) : transform(transform), hitShaderOffset(hitShaderOffset) {}
+Instance::Instance(glm::mat4 transform, uint32_t hitShaderOffset) : transform(transform), hitShaderOffset(hitShaderOffset) {}
+
+//SceneBuffersBuilder::SceneBuffersBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
+//
+//SceneBuffersBuilder SceneBuffersBuilder::addModel(Model3D& model)
+//{
+//    model.index = this->models.size();
+//    this->models.push_back(model);
+//
+//    return *this;
+//}
+//
+//std::tuple<std::shared_ptr<Buffer>, std::shared_ptr<Buffer>> SceneBuffersBuilder::build()
+//{
+//    uint32_t vertexCount = 0;
+//    uint32_t indexCount = 0;
+//    for (auto& model : this->models) {
+//        vertexCount += model.vertices.size();
+//        indexCount += model.indices.size();
+//    }
+//}

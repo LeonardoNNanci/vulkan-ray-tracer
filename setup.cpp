@@ -1,5 +1,3 @@
-#define VULKAN_HPP_NO_CONSTRUCTORS
-
 #include "setup.hpp"
 
 VkInstance globalInstance;
@@ -7,7 +5,7 @@ VkDevice globalDevice;
 
 IHasSetup::IHasSetup(std::shared_ptr<Setup> setup) : setup(setup) {};
 
-SetupBuilder SetupBuilder::addExtensions(RequiredExtensions extensions)
+SetupBuilder SetupBuilder::addExtensions(Requirements extensions)
 {
 	for (auto& extension : extensions.instanceExtensions)
 		this->extensions.instanceExtensions.push_back(extension);

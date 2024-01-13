@@ -1,5 +1,3 @@
-#define VULKAN_HPP_NO_CONSTRUCTORS
-
 #include "command_pool.hpp"
 
 CommandPoolBuilder::CommandPoolBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}

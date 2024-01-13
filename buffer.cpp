@@ -1,4 +1,3 @@
-#define VULKAN_HPP_NO_CONSTRUCTORS
 #include "buffer.hpp"
 #include "scene.hpp"
 
