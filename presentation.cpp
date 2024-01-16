@@ -2,6 +2,12 @@
 
 Presentation::Presentation(std::shared_ptr<Setup> setup) : IHasSetup(setup), window(NULL) {}
 
+bool Presentation::windowIsOpen()
+{
+    glfwPollEvents();
+    return !glfwWindowShouldClose(this->window);
+}
+
 Presentation::~Presentation()
 {
     for (auto& imageView : this->swapchain.imageViews)
@@ -47,7 +53,7 @@ std::shared_ptr<Presentation> PresentationBuilder::build()
 GLFWwindow* PresentationBuilder::createWindow()
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	return glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
+	return glfwCreateWindow(600, 800, "Vulkan window", nullptr, nullptr);
 }
 
 vk::SurfaceKHR PresentationBuilder::createSurface()

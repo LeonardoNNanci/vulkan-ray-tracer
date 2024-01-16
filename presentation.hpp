@@ -25,6 +25,8 @@ public:
 
 	Presentation(std::shared_ptr<Setup> setup);
 
+	bool windowIsOpen();
+
 	~Presentation();
 };
 

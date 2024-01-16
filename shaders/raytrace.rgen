@@ -22,16 +22,16 @@ layout(push_constant) uniform constants {
 void main() 
 {
     const ivec2 originalCenter = ivec2(gl_LaunchIDEXT.xy);
-    const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
-    const float distance = length(originalCenter - imageCenter);
-    const int k = 2;
-    const float radii = 100.;
-    const int exp = int(distance / radii);
-    float ki = pow(float(k), float(exp));
+    // const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
+    // const float distance = length(originalCenter - imageCenter);
+    // const int k = 2;
+    // const float radii = 100.;
+    // const int exp = int(distance / radii);
+    // float ki = pow(float(k), float(exp));
     //debugPrintfEXT("%f\n", ki);
 
-    vec2 mod = vec2(originalCenter % int(ki));
-    vec2 pixelCenter = vec2(originalCenter) - mod + ki*vec2(0.5);
+    //vec2 mod = vec2(originalCenter % int(ki));
+    vec2 pixelCenter = vec2(originalCenter);// - mod + ki*vec2(0.5);
     // debugPrintfEXT("%v2i %% %d = %v2f\n", originalCenter, int(ki), mod);
     
 

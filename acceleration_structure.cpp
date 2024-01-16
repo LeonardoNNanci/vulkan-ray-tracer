@@ -163,9 +163,9 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
 
         vk::AccelerationStructureInstanceKHR rayInst{
             .transform = {{{
-                    instance.transform[0].x, instance.transform[1].x, instance.transform[2].x, instance.transform[3].x,
-                    instance.transform[0].y, instance.transform[1].y, instance.transform[2].y, instance.transform[3].y,
-                    instance.transform[0].z, instance.transform[1].z, instance.transform[2].z, instance.transform[3].z
+                    instance.transform[0][0], instance.transform[1][0], instance.transform[2][0], instance.transform[3][0],
+                    instance.transform[0][1], instance.transform[1][1], instance.transform[2][1], instance.transform[3][1],
+                    instance.transform[0][2], instance.transform[1][2], instance.transform[2][2], instance.transform[3][2]
             }}},
             .instanceCustomIndex = modelIndex,
             .mask = 0xFF,

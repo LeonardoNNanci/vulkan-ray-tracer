@@ -37,15 +37,15 @@ void main()
 	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
 	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
 	int i3 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
-	vec3 p1 = gl_ObjectToWorldEXT * vertexBuffer.v[desc.vertexStride + i1].pos;
-	vec3 p2 = gl_ObjectToWorldEXT * vertexBuffer.v[desc.vertexStride + i2].pos;
-	vec3 p3 = gl_ObjectToWorldEXT * vertexBuffer.v[desc.vertexStride + i3].pos;
-	vec3 surfaceNormal = normalize(cross((p2-p1), (p3-p1)));
+	vec3 p1 = gl_WorldToObjectEXT * vertexBuffer.v[desc.vertexStride + i1].pos;
+	vec3 p2 = gl_WorldToObjectEXT * vertexBuffer.v[desc.vertexStride + i2].pos;
+	vec3 p3 = gl_WorldToObjectEXT * vertexBuffer.v[desc.vertexStride + i3].pos;
+	vec3 surfaceNormal = normalize(cross((p3-p2), (p1-p2)));
     if(gl_InstanceID == 2){
         debugPrintfEXT("%d %d %d %v3f %v3f %v3f\n", i1, i2, i3, p1, p2, p3);
     }
 
-	float intensity = abs(dot(surfaceNormal, normalize(hit2Light)));
+	float intensity = dot(surfaceNormal, normalize(hit2Light));
     // float attenuation = 1;
     // isShadowed = true;
 
