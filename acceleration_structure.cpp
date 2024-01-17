@@ -169,7 +169,7 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
             }}},
             .instanceCustomIndex = modelIndex,
             .mask = 0xFF,
-            .instanceShaderBindingTableRecordOffset = 0,
+            .instanceShaderBindingTableRecordOffset = instance.hitShaderOffset,
             .accelerationStructureReference = BLASAddress
         };
         rayInst.setFlags(vk::GeometryInstanceFlagBitsKHR::eTriangleFacingCullDisable);

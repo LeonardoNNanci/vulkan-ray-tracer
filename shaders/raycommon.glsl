@@ -1,6 +1,10 @@
 struct hitPayload
 {
-  vec3 hitValue;
+	bool done;
+	vec3 rayDirection;
+	vec3 rayOrigin;
+	vec3 hitValue;
+	uint depth;
 };
 
 struct Vertex{

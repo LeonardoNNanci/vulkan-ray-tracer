@@ -17,10 +17,34 @@ Model3D squareModel {
 		{{ -1., -1.,  0., 0.5 }},
 		{{ 1., -1.,  0., 0.5 }}},
 	.indices = {
-		1, 0, 2, //floor
-		1, 2, 3}
+		2, 0, 1, //floor
+		3, 2, 1}
 };
 
+Model3D cubeModel {
+	.vertices = {
+		{ { -.5, .5, -.5, 1. }},
+		{ { .5,  .5, -.5, 1. } },
+		{ { -.5, -.5, -.5, 1. } },
+		{ { .5, -.5, -.5, 1. } },
+		{ { -.5,  .5,  .5, 1. } },
+		{ { .5,  .5,  .5, 1. } },
+		{ { -.5, -.5,  .5, 1. } },
+		{ { .5, -.5,  .5, 1. } }},
+	.indices = {
+		0, 1, 2, // Side 0
+		2, 1, 3,
+		4, 0, 6, // Side 1
+		6, 0, 2,
+		7, 5, 6, // Side 2
+		6, 5, 4,
+		3, 1, 7, // Side 3 
+		7, 1, 5,
+		4, 5, 0, // Side 4 
+		0, 5, 1,
+		3, 7, 2, // Side 5 
+		2, 7, 6,}
+};
 #include<iostream>
 int main() {
 	auto setup = SetupBuilder()
@@ -33,27 +57,30 @@ int main() {
 	auto commandPool = CommandPoolBuilder(setup).build();
 
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
-	auto bunnyModel = FileReader().readPLY("./models/bunny.ply");
-	Instance ground(glm::identity<glm::mat4>(), 0);
+	//auto bunnyModel = FileReader().readPLY("./models/bunny.ply");
+	Instance ground(glm::rotate(glm::identity<glm::mat4>(), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), 0);
 	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(6.)), glm::pi<glm::float32>() / 2,glm::vec3(1., 0., 0.)), glm::float32{-0.75}, glm::vec3(0., 1., 0.)), glm::vec3(-.06, -.054, 0.12)), 0);
-	Instance bunny(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(5.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(.04, -0.037, -.1)), 0);
-	Instance ceiling(glm::translate(glm::rotate(glm::identity<glm::mat4>(), glm::pi<glm::float32>(), glm::vec3(1., 0., 0.)), glm::vec3(0., 0., -3.)), 0);
-	Instance light(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5)), glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -5.99)), 0);
-	Instance left(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 1., 1.)), 0);
-	Instance right(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 1, -1.)), 0);
+	//Instance bunny(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(5.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(.04, -0.037, -.1)), 0);
+	Instance ceiling(glm::translate(glm::rotate(glm::identity<glm::mat4>(), glm::pi<glm::float32>(), -glm::vec3(0., 0., 1.)), glm::vec3(0., 0., 3.)), 0);
+	Instance light(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -5.99)), 1);
+	Instance left(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -1., 1.)), 0);
+	Instance right(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 1, 1.)), 0);
 	Instance back(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(-1., 0., 1.)), 0);
+	Instance cube(glm::rotate(glm::translate(glm::identity<glm::mat4>(), glm::vec3(0., 0., 0.5)), glm::pi<glm::float32>() / 6, glm::vec3(0., 0., 1.)), 0);
 
 	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
 		.addModel(squareModel)
+		//.addModel(cubeModel)
 		.addModel(dragonModel)
-		.addModel(bunnyModel)
+		//.addModel(bunnyModel)
 		.build();
 
 	// TODO: change argument to command pool, instead of commandBuffer
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 		.addModel3D(squareModel)
 		.addModel3D(dragonModel)
-		.addModel3D(bunnyModel)
+		//.addModel3D(bunnyModel)
+		//.addModel3D(cubeModel)
 		.addInstance(ground, 0)
 		.addInstance(ceiling, 0)
 		.addInstance(light, 0)
@@ -61,7 +88,8 @@ int main() {
 		.addInstance(right, 0)
 		.addInstance(back, 0)
 		.addInstance(dragon, 1)
-		.addInstance(bunny, 2)
+		//.addInstance(bunny, 2)
+		.addInstance(cube, 1)
 		.build();
 
 	Descriptor bvhDescriptor{
@@ -118,6 +146,7 @@ int main() {
 		.addShader("./shaders/miss.spv", vk::ShaderStageFlagBits::eMissKHR)
 		//.addShader("./shaders/shadow.spv", vk::ShaderStageFlagBits::eMissKHR)
 		.addShader("./shaders/closesthit.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
+		.addShader("./shaders/light.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
 		.addDescriptorSet(rayTracingSet)
 		.addDescriptorSet(sceneSet)
 		.addPushconstant(pc)
@@ -130,7 +159,7 @@ int main() {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	auto cameraPosition = glm::vec4(-6., 0., 1.5, 1.); // glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(2.0f, 2.0f, 2.0f, 1.0f);
+	auto cameraPosition = glm::vec4(-5., 0., 1.5, 1.); // glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(2.0f, 2.0f, 2.0f, 1.0f);
 	pc.data.projInv = glm::inverse(glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f));
 	pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
 	pc.data = pc.data;
@@ -148,7 +177,14 @@ int main() {
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		printf("\r%.2f", 1 / deltaTime);
+
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		auto cameraPosition =  glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(5.0f, 5.0f, 2.0f, 1.0f);
+		pc.data.projInv = glm::inverse(glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f));
+		pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
+		pc.data = pc.data;
+
+		//printf("\r%.2f", 1 / deltaTime);
 		previousTime = currentTime;
 
 		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore }, {}).value;
