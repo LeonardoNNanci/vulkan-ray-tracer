@@ -166,17 +166,25 @@ int main() {
 	pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
 	pc.data = pc.data;
 	auto commandBuffer = commandPool->createCommandBuffer();
-	commandBuffer->setFence();
+	commandBuffer->setFence(true);
 
-	auto imageReadySemaphore = setup->device.createSemaphore({});
-	auto renderFinishedSemaphore = setup->device.createSemaphore({});
+	auto imageReadySemaphore = std::make_shared<Semaphore>(setup);
+	imageReadySemaphore->addSrcStage(vk::PipelineStageFlagBits::eTransfer);
+	imageReadySemaphore->addDstStage(vk::PipelineStageFlagBits::eRayTracingShaderKHR);
 
-	commandBuffer->setWaitSemaphore(imageReadySemaphore);
-	commandBuffer->setSignalSemaphore(renderFinishedSemaphore);
+	auto renderFinishedSemaphore = std::make_shared<Semaphore>(setup);
+	renderFinishedSemaphore->addSrcStage(vk::PipelineStageFlagBits::eRayTracingShaderKHR);
+	renderFinishedSemaphore->addSrcStage(vk::PipelineStageFlagBits::eAllCommands);
+
+	commandBuffer->addWaitSemaphore(imageReadySemaphore);
+	commandBuffer->addSignalSemaphore(renderFinishedSemaphore);
 
 	auto previousTime = std::chrono::high_resolution_clock::now();
 
 	while (presentation->windowIsOpen()) {
+		commandBuffer->waitFinished();
+		commandBuffer->resetFence();
+
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 
@@ -189,26 +197,24 @@ int main() {
 		//printf("\r%.2f", 1 / deltaTime);
 		previousTime = currentTime;
 
-		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore }, {}).value;
-		rayTracingSet->updateDescriptor(imageDescriptor, presentation->swapchain.imageViews[imageIndex]);
+		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore->handle }, {}).value;
+		rayTracingSet->updateDescriptor(imageDescriptor, presentation->swapchain.images[imageIndex]);
 
 		commandBuffer->begin();
+		presentation->swapchain.images[imageIndex]->clear(commandBuffer);
+		presentation->swapchain.images[imageIndex]->renderBarrier(commandBuffer);
 		pipeline->run(commandBuffer, presentation->swapchain, { pc });
+		presentation->swapchain.images[imageIndex]->presentBarrier(commandBuffer);
 		commandBuffer->submit();
-		commandBuffer->waitFinished();
-		commandBuffer->resetFence();
-
+		
 		std::vector<vk::SwapchainKHR> swapchains = { presentation->swapchain.handle };
 		std::vector<uint32_t> imageIndices = { static_cast<uint32_t>(imageIndex) };
 
 		vk::PresentInfoKHR presentInfo{};
 		presentInfo.setSwapchains(swapchains);
 		presentInfo.setImageIndices(imageIndices);
-		presentInfo.setWaitSemaphores(renderFinishedSemaphore);
-
+		presentInfo.setWaitSemaphores(renderFinishedSemaphore->handle);
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 	}
 	setup->device.waitIdle();
-	setup->device.destroySemaphore(imageReadySemaphore);
-	setup->device.destroySemaphore(renderFinishedSemaphore);
 }

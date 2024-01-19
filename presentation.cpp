@@ -10,8 +10,6 @@ bool Presentation::windowIsOpen()
 
 Presentation::~Presentation()
 {
-    for (auto& imageView : this->swapchain.imageViews)
-        this->setup->device.destroyImageView(imageView);
     this->setup->device.destroySwapchainKHR(this->swapchain.handle);
     this->setup->instance.destroySurfaceKHR(this->surface);
     glfwDestroyWindow(this->window);
@@ -45,7 +43,7 @@ std::shared_ptr<Presentation> PresentationBuilder::build()
     this->presentation->window = this->createWindow();
     this->presentation->surface = this->createSurface();
     this->presentation->swapchain = this->createSwapchain();
-    this->presentation->swapchain.imageViews = this->createImageViews();
+    this->presentation->swapchain.images = this->createImages();
 
     return this->presentation;
 }
@@ -89,7 +87,7 @@ Swapchain PresentationBuilder::createSwapchain()
         .imageColorSpace = format_.colorSpace,
         .imageExtent = swapchain.extent,
         .imageArrayLayers = 1,
-        .imageUsage = vk::ImageUsageFlagBits::eStorage,
+        .imageUsage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst,
         .imageSharingMode = vk::SharingMode::eExclusive,
         .queueFamilyIndexCount = 1,
         .pQueueFamilyIndices = &this->setup->graphicsQueue.familyIndex,
@@ -102,35 +100,18 @@ Swapchain PresentationBuilder::createSwapchain()
     return swapchain;
 }
 
-std::vector<vk::ImageView> PresentationBuilder::createImageViews()
+std::vector<std::shared_ptr<Image>> PresentationBuilder::createImages()
 {
-    std::vector<vk::ImageView> imageViews;
+    std::vector<std::shared_ptr<Image>> images;
 
     std::vector<vk::Image> scImages = this->setup->device.getSwapchainImagesKHR(this->presentation->swapchain.handle);
     int nImages = scImages.size();
 
-    imageViews.resize(nImages);
-    vk::ImageViewCreateInfo imageViewInfo{
-            .viewType = vk::ImageViewType::e2D,
-            .format = this->presentation->swapchain.format,
-            .components = {
-                .r = vk::ComponentSwizzle::eIdentity,
-                .g = vk::ComponentSwizzle::eIdentity,
-                .b = vk::ComponentSwizzle::eIdentity,
-                .a = vk::ComponentSwizzle::eIdentity
-            },
-            .subresourceRange = {
-                .aspectMask = vk::ImageAspectFlagBits::eColor,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1
-            }
-    };
+    images.resize(nImages);
+    
     for (int i = 0; i < nImages; i++) {
-        imageViewInfo.setImage(scImages[i]);
-        imageViews[i] = this->setup->device.createImageView(imageViewInfo);
+        images[i] = std::make_shared<Image>(this->setup, scImages[i], this->presentation->swapchain.format);
     }
 
-    return imageViews;
+    return images;
 }

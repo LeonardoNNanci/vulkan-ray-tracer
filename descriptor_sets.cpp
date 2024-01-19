@@ -21,10 +21,10 @@ void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Buff
     this->setup->device.updateDescriptorSets({ writeBuffer }, {});
 }
 
-void DescriptorSet::updateDescriptor(Descriptor descriptor, vk::ImageView imageView) {
+void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Image> image) {
     vk::DescriptorImageInfo imageInfo{
-        .imageView = imageView,
-        .imageLayout = vk::ImageLayout::eGeneral,
+        .imageView = image->view,
+        .imageLayout = image->layout,
     };
     vk::WriteDescriptorSet writeImage{
         .dstSet = this->handle,

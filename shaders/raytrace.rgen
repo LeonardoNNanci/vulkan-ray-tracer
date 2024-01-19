@@ -21,6 +21,8 @@ layout(push_constant) uniform constants {
 
 void main() 
 {
+    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(0.), 1.));
+
     const ivec2 originalCenter = ivec2(gl_LaunchIDEXT.xy);
     // const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
     // const float distance = length(originalCenter - imageCenter);

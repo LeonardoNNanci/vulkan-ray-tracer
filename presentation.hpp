@@ -7,6 +7,7 @@
 #include<vulkan/vulkan.hpp>
 
 #include "builder.hpp"
+#include "image.hpp"
 #include "setup.hpp"
 
 class Swapchain {
@@ -14,7 +15,7 @@ public:
 	vk::SwapchainKHR handle;
 	vk::Extent2D extent;
 	vk::Format format;
-	std::vector<vk::ImageView> imageViews;
+	std::vector<std::shared_ptr<Image>> images;
 };
 
 class Presentation : private IHasSetup {
@@ -47,5 +48,5 @@ private:
 
 	Swapchain createSwapchain();
 
-	std::vector<vk::ImageView> createImageViews();
+	std::vector<std::shared_ptr<Image>> createImages();
 };

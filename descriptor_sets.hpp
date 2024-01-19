@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.hpp>
 #include "builder.hpp"
 #include "acceleration_structure.hpp"
+#include "image.hpp"
 
 class DescriptorPool : IHasSetup {
 public:
@@ -30,7 +31,7 @@ public:
 
 	void updateDescriptor(Descriptor descriptor, std::shared_ptr<Buffer> buffer);
 
-	void updateDescriptor(Descriptor descriptor, vk::ImageView imageView);
+	void updateDescriptor(Descriptor descriptor, std::shared_ptr<Image> image);
 
 	void updateDescriptor(Descriptor descriptor, std::shared_ptr<AccelerationStructure> accelerationStructure);
 

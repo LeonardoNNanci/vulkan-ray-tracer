@@ -6,6 +6,7 @@
 
 #include "builder.hpp"
 #include "setup.hpp"
+#include "synchronization.hpp"
 
 class CommandBuffer : private IHasSetup {
 public:
@@ -19,11 +20,11 @@ public:
 
 	void submit();
 
-	void setWaitSemaphore(vk::Semaphore semaphore);
+	void addWaitSemaphore(std::shared_ptr<Semaphore> semaphore);
 
-	void setSignalSemaphore(vk::Semaphore semaphore);
+	void addSignalSemaphore(std::shared_ptr<Semaphore> semaphore);
 
-	void setFence();
+	void setFence(bool signaled=false);
 
 	void resetFence();
 
@@ -32,8 +33,8 @@ public:
 	~CommandBuffer();
 
 private:
-	std::vector<vk::Semaphore> waitSemaphores;
-	std::vector<vk::Semaphore> signalSemaphores;
+	std::vector<std::shared_ptr<Semaphore>> waitSemaphores;
+	std::vector<std::shared_ptr<Semaphore>> signalSemaphores;
 	vk::Fence fence = VK_NULL_HANDLE;
 
 	void destroyFence();

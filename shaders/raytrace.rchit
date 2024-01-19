@@ -46,14 +46,14 @@ void main()
     
     if(dot(objectNormal, gl_ObjectRayDirectionEXT) > 0){
         prd.done = true;
-        prd.hitValue = vec3(1., 0., 0.);
+        prd.hitValue = vec3(1., 1., 0.);
         // debugPrintfEXT("%d\n", prd.depth);
     }
     else{
         vec3 dir = normalize(rand3());
-        dir = objectNormal + dir * 0.9;
+        dir = objectNormal + (dir * 0.999);
         prd.done = false;
-        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT * 0.999;
         prd.rayDirection = gl_ObjectToWorldEXT * vec4(dir, 1.);
     }
 }

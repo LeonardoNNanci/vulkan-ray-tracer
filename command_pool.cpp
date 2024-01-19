@@ -48,17 +48,21 @@ void CommandBuffer::begin() {
     this->handle.begin(beginInfo);
 }
 
-void CommandBuffer::setWaitSemaphore(vk::Semaphore semaphore) {
+void CommandBuffer::addWaitSemaphore(std::shared_ptr<Semaphore> semaphore) {
     this->waitSemaphores.push_back(semaphore);
 }
 
-void CommandBuffer::setSignalSemaphore(vk::Semaphore semaphore) {
+void CommandBuffer::addSignalSemaphore(std::shared_ptr<Semaphore> semaphore) {
     this->signalSemaphores.push_back(semaphore);
 }
 
-void CommandBuffer::setFence() {
+void CommandBuffer::setFence(bool signaled) {
     this->destroyFence();
-    this->fence = this->setup->device.createFence({});
+
+    vk::FenceCreateInfo fenceInfo{};
+    if (signaled)
+        fenceInfo.setFlags(vk::FenceCreateFlagBits::eSignaled);
+    this->fence = this->setup->device.createFence(fenceInfo);
 }
 
 void CommandBuffer::resetFence() {
@@ -80,13 +84,28 @@ void CommandBuffer::destroyFence() {
 
 void CommandBuffer::submit() {
     this->handle.end();
+    auto waitCount = this->waitSemaphores.size();
+
+    std::vector<vk::Semaphore> waitHandles(waitCount);
+    std::vector<vk::PipelineStageFlags> waitStages(waitCount);
+    for (int i = 0; i < waitCount; i++) {
+        waitHandles[i] = this->waitSemaphores[i]->handle;
+        waitStages[i] = this->waitSemaphores[i]->dstStages;
+    }
+
+    auto signalCount = this->signalSemaphores.size();
+    std::vector<vk::Semaphore> signalHandles(signalCount);
+    for (int i = 0; i < signalCount; i++) {
+        signalHandles[i] = this->signalSemaphores[i]->handle;
+    }
 
     vk::SubmitInfo submitInfo{
         .commandBufferCount = 1,
         .pCommandBuffers = &this->handle
     };
-    submitInfo.setWaitSemaphores(this->waitSemaphores);
-    submitInfo.setSignalSemaphores(this->signalSemaphores);
+    submitInfo.setWaitSemaphores(waitHandles);
+    submitInfo.setWaitDstStageMask(waitStages);
+    submitInfo.setSignalSemaphores(signalHandles);
 
     this->queue.handle.submit(submitInfo, this->fence);
 }

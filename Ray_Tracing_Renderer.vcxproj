@@ -146,11 +146,13 @@
     <ClCompile Include="command_pool.cpp" />
     <ClCompile Include="descriptor_sets.cpp" />
     <ClCompile Include="file_reader.cpp" />
+    <ClCompile Include="image.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pipeline.cpp" />
     <ClCompile Include="presentation.cpp" />
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="setup.cpp" />
+    <ClCompile Include="synchronization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="raycommon.glsl" />
@@ -167,11 +169,13 @@
     <ClInclude Include="command_pool.hpp" />
     <ClInclude Include="descriptor_sets.hpp" />
     <ClInclude Include="file_reader.hpp" />
+    <ClInclude Include="image.hpp" />
     <ClInclude Include="pipeline.hpp" />
     <ClInclude Include="presentation.hpp" />
     <ClInclude Include="scene.hpp" />
     <ClInclude Include="setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
+    <ClInclude Include="synchronization.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
