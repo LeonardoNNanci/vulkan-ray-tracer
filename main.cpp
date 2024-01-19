@@ -58,15 +58,16 @@ int main() {
 
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
 	//auto bunnyModel = FileReader().readPLY("./models/bunny.ply");
-	Instance ground(glm::rotate(glm::identity<glm::mat4>(), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), 0);
-	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(6.)), glm::pi<glm::float32>() / 2,glm::vec3(1., 0., 0.)), glm::float32{-0.75}, glm::vec3(0., 1., 0.)), glm::vec3(-.06, -.054, 0.12)), 0);
-	//Instance bunny(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(5.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(.04, -0.037, -.1)), 0);
-	Instance ceiling(glm::translate(glm::rotate(glm::identity<glm::mat4>(), glm::pi<glm::float32>(), -glm::vec3(0., 0., 1.)), glm::vec3(0., 0., 3.)), 0);
-	Instance light(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(0.5)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -5.99)), 1);
-	Instance left(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -1., 1.)), 0);
-	Instance right(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 1, 1.)), 0);
-	Instance back(glm::translate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1., 1., 1.5)), glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(-1., 0., 1.)), 0);
-	Instance cube(glm::rotate(glm::translate(glm::identity<glm::mat4>(), glm::vec3(0., 0., 0.5)), glm::pi<glm::float32>() / 6, glm::vec3(0., 0., 1.)), 0);
+	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
+	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2,glm::vec3(1., 0., 0.)), glm::float32{-0.75}, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
+	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
+	////Instance bunny(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(5.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(.04, -0.037, -.1)), 0);
+	//Instance ceiling(glm::translate(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), -glm::vec3(0., 0., 1.)), glm::vec3(0., 0., 3.)), 0);
+	Instance left(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -0.5, 0.5)), 0);
+	Instance right(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 0.5, 0.5)), 0);
+	Instance front(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(0.5, 0., 0.5)), 0);
+	Instance back(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(-0.5, 0., 0.5)), 0);
+	//Instance cube(glm::rotate(glm::translate(glm::mat4(1.), glm::vec3(0., 0., 0.5)), glm::pi<glm::float32>() / 6, glm::vec3(0., 0., 1.)), 0);
 
 	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
 		.addModel(squareModel)
@@ -81,15 +82,16 @@ int main() {
 		.addModel3D(dragonModel)
 		//.addModel3D(bunnyModel)
 		//.addModel3D(cubeModel)
-		.addInstance(ground, 0)
-		.addInstance(ceiling, 0)
 		.addInstance(light, 0)
+		.addInstance(ground, 0)
+		//.addInstance(ceiling, 0)
 		.addInstance(left, 0)
 		.addInstance(right, 0)
 		.addInstance(back, 0)
+		.addInstance(front, 0)
 		.addInstance(dragon, 1)
 		//.addInstance(bunny, 2)
-		.addInstance(cube, 1)
+		//.addInstance(cube, 1)
 		.build();
 
 	Descriptor bvhDescriptor{
@@ -179,7 +181,7 @@ int main() {
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-		auto cameraPosition =  glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(5.0f, 5.0f, 2.0f, 1.0f);
+		auto cameraPosition =  glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(3.0f, 3.0f, 2.0f, 1.0f);
 		pc.data.projInv = glm::inverse(glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f));
 		pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
 		pc.data = pc.data;
