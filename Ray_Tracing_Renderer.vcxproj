@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);VK_NO_PROTOTYPES</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;$(VisualStudioDir)\OptiXSDK\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -92,7 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);VK_NO_PROTOTYPES</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;$(VisualStudioDir)\OptiXSDK\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
@@ -110,13 +110,13 @@
       <PreprocessorDefinitions>VULKAN_HPP_NO_CONSTRUCTORS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;$(VisualStudioDir)\Libraries\OptiXSDK\build\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(VisualStudioDir)\Libraries\OptiXSDK\build\lib\Debug;$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;optixDenoiser.lib;cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -128,7 +128,7 @@
       <PreprocessorDefinitions>VULKAN_HPP_NO_CONSTRUCTORS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Include;$(VisualStudioDir)\Libraries\glfw\include;$(VisualStudioDir)\Libraries\OptiXSDK\build\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
@@ -136,14 +136,15 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(VisualStudioDir)\Libraries\OptiXSDK\build\lib\Debug;$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;optixDenoiser.lib;cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="acceleration_structure.cpp" />
     <ClCompile Include="buffer.cpp" />
     <ClCompile Include="command_pool.cpp" />
+    <ClCompile Include="denoiser.cpp" />
     <ClCompile Include="descriptor_sets.cpp" />
     <ClCompile Include="file_reader.cpp" />
     <ClCompile Include="image.cpp" />
@@ -167,6 +168,7 @@
     <ClInclude Include="buffer.hpp" />
     <ClInclude Include="builder.hpp" />
     <ClInclude Include="command_pool.hpp" />
+    <ClInclude Include="denoiser.hpp" />
     <ClInclude Include="descriptor_sets.hpp" />
     <ClInclude Include="file_reader.hpp" />
     <ClInclude Include="image.hpp" />
