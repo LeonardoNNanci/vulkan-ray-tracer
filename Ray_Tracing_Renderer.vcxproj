@@ -116,7 +116,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(VisualStudioDir)\Libraries\OptiXSDK\build\lib\Debug;$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;optixDenoiser.lib;cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;cuda.lib;cudart.lib;optixDenoiser.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(VisualStudioDir)\Libraries\OptiXSDK\build\lib\Debug;$(VisualStudioDir)\Libraries\VulkanSDK\Lib;$(VisualStudioDir)\Libraries\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;optixDenoiser.lib;cuda.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;glfw3.lib;cuda.lib;cudart.lib;optixDenoiser.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -154,6 +154,7 @@
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="setup.cpp" />
     <ClCompile Include="synchronization.cpp" />
+    <ClCompile Include="vulkan_optix_adapter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="raycommon.glsl" />
@@ -178,6 +179,7 @@
     <ClInclude Include="setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
     <ClInclude Include="synchronization.hpp" />
+    <ClInclude Include="vulkan_optix_adapter.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
