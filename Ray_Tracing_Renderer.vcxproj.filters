@@ -54,7 +54,7 @@
     <ClCompile Include="denoiser.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="vulkan_optix_adapter.cpp">
+    <ClCompile Include="buffer_external.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
   </ItemGroup>
@@ -111,7 +111,7 @@
     <ClInclude Include="denoiser.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan_optix_adapter.hpp">
+    <ClInclude Include="buffer_external.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
   </ItemGroup>

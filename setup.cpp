@@ -250,3 +250,11 @@ VkDeviceAddress vkGetAccelerationStructureDeviceAddressKHR(
     auto func = reinterpret_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetAccelerationStructureDeviceAddressKHR"));
     return func(device, pInfo);
 }
+
+VkResult vkGetMemoryWin32HandleKHR(
+    VkDevice                                    device,
+    const VkMemoryGetWin32HandleInfoKHR* pGetWin32HandleInfo,
+    HANDLE* pHandle) {
+    auto func = reinterpret_cast<PFN_vkGetMemoryWin32HandleKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetMemoryWin32HandleKHR"));
+    return func(device, pGetWin32HandleInfo, pHandle);
+}

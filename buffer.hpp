@@ -26,7 +26,7 @@ private:
 	void copyBuffer(std::shared_ptr<Buffer> other);
 };
 
-class BufferBuilder : public Builder <std::shared_ptr<Buffer>> , private IHasSetup{
+class BufferBuilder : public Builder <std::shared_ptr<Buffer>> , protected IHasSetup{
 public:
 	BufferBuilder(std::shared_ptr<Setup> setup);
 
@@ -42,7 +42,7 @@ public:
 
 	std::shared_ptr<Buffer> build();
 
-private:
+protected:
 	vk::Buffer buffer;
 	vk::DeviceMemory memory;
 	vk::MemoryPropertyFlags properties;
@@ -51,9 +51,9 @@ private:
 	vk::DeviceSize offset = 0;
 	std::shared_ptr<CommandBuffer> commandBuffer;
 
-	vk::Buffer createBuffer();
+	virtual vk::Buffer createBuffer();
 
-	vk::DeviceMemory createMemory();
+	virtual vk::DeviceMemory createMemory();
 
 	uint32_t findMemoryType(uint32_t typeFilter);
 };

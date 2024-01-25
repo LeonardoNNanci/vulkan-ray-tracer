@@ -128,7 +128,7 @@ std::vector<std::shared_ptr<DescriptorSet>> DescriptorSetsBuilder::build() {
 }
 
 DescriptorSetsBuilder DescriptorSetsBuilder::addDescriptor(Descriptor descriptor) {
-    this->nSets = std::max(this->nSets, descriptor.set + 1);
+    this->nSets = max(this->nSets, descriptor.set + 1);
     this->descriptors.push_back(descriptor);
     return *this;
 }

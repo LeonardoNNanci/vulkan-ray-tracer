@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClCompile Include="acceleration_structure.cpp" />
     <ClCompile Include="buffer.cpp" />
+    <ClCompile Include="buffer_external.cpp" />
     <ClCompile Include="command_pool.cpp" />
     <ClCompile Include="denoiser.cpp" />
     <ClCompile Include="descriptor_sets.cpp" />
@@ -154,7 +155,6 @@
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="setup.cpp" />
     <ClCompile Include="synchronization.cpp" />
-    <ClCompile Include="vulkan_optix_adapter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="raycommon.glsl" />
@@ -167,6 +167,7 @@
   <ItemGroup>
     <ClInclude Include="acceleration_structure.hpp" />
     <ClInclude Include="buffer.hpp" />
+    <ClInclude Include="buffer_external.hpp" />
     <ClInclude Include="builder.hpp" />
     <ClInclude Include="command_pool.hpp" />
     <ClInclude Include="denoiser.hpp" />
@@ -179,7 +180,6 @@
     <ClInclude Include="setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
     <ClInclude Include="synchronization.hpp" />
-    <ClInclude Include="vulkan_optix_adapter.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
