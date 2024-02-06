@@ -1,6 +1,7 @@
 #include "image.hpp"
 
-Image::Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format) : IHasSetup(setup), handle(handle){
+Image::Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format, uint32_t width, uint32_t height, vk::DeviceMemory memory)
+	: IHasSetup(setup), handle(handle), width(width), height(height), memory(memory) {
 	vk::ImageViewCreateInfo imageViewInfo{
 		.image = this->handle,
 		.viewType = vk::ImageViewType::e2D,
@@ -21,6 +22,35 @@ Image::Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format) 
 	};
 	this->view = this->setup->device.createImageView(imageViewInfo);
 	this->layout = vk::ImageLayout::eGeneral;
+}
+
+void Image::pipelineBarrier(std::shared_ptr<CommandBuffer> commandBuffer, vk::ImageLayout newLayout) {
+	vk::ImageMemoryBarrier imageBarrier{
+		.srcAccessMask = vk::AccessFlagBits::eMemoryWrite,
+		.dstAccessMask = vk::AccessFlagBits::eMemoryRead,
+		.oldLayout = this->layout,
+		.newLayout = newLayout,
+		.srcQueueFamilyIndex = this->setup->graphicsQueue.familyIndex,
+		.dstQueueFamilyIndex = this->setup->graphicsQueue.familyIndex,
+		.image = this->handle,
+		.subresourceRange = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		}
+	};
+	commandBuffer->handle.pipelineBarrier(
+		vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+		vk::PipelineStageFlagBits::eAllCommands,
+		{},
+		{},
+		{},
+		{ imageBarrier }
+	);
+
+	this->layout = newLayout;
 }
 
 void Image::presentBarrier(std::shared_ptr<CommandBuffer> commandBuffer) {
@@ -133,6 +163,8 @@ void Image::clear(std::shared_ptr<CommandBuffer> commandBuffer) {
 }
 
 Image::~Image() {
+	if (this->memory != nullptr) {
+		this->setup->device.freeMemory(this->memory);
+	}
 	this->setup->device.destroyImageView(this->view);
 }
-

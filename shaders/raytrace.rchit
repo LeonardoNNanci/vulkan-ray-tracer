@@ -9,15 +9,14 @@ layout(location=0) rayPayloadInEXT hitPayload prd;
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 layout(set=1, binding=2) readonly buffer ModelDescription_ { ModelDescription o[]; } modelDescription;
-
+layout(set=2, binding=0, rgba32f) uniform image2D albedoImage;
+layout(set=2, binding=1, rgba32f) uniform image2D normalImage;
 hitAttributeEXT vec3 attribs;
 
 layout(push_constant) uniform constants {
-    vec4 clearColor;
-    vec4 lightPosition;
-    float lightIntensity;
-    int lightType;
+    mat4 proj;
     mat4 projInv;
+    mat4 view;
     mat4 viewInv;
 };
 
@@ -35,7 +34,6 @@ vec3 rand3() {
 void main()
 {
     ModelDescription desc = modelDescription.o[gl_InstanceCustomIndexEXT];
- 
 	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
 	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
 	int i3 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
@@ -44,16 +42,36 @@ void main()
 	vec3 p3 = vertexBuffer.v[desc.vertexStride + i3].pos.xyz;
 	vec3 objectNormal = normalize(cross((p3 - p2), (p1 - p2)));
     
+    vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 1.));
+
+    // backface hit
     if(dot(objectNormal, gl_ObjectRayDirectionEXT) > 0){
         prd.done = true;
-        prd.hitValue = vec3(1., 1., 0.);
+        prd.hitValue = vec3(0., 0., 0.);
         // debugPrintfEXT("%d\n", prd.depth);
     }
+    // hit
     else{
         vec3 dir = normalize(rand3());
+        // use when not summing to the normal
+        // if(dot(dir, objectNormal) < 0)
+        //     dir *= -1;
         dir = objectNormal + (dir * 0.999);
         prd.done = false;
-        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT * 0.999;
+        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT; // * 0.999;
         prd.rayDirection = gl_ObjectToWorldEXT * vec4(dir, 1.);
+        
+        // denoiser: albedo & normal
+        if(prd.depth == 0) {
+            imageStore(albedoImage, ivec2(gl_LaunchIDEXT.xy), vec4(1.));
+            imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(worldNormal, 1.));
+            // // change  this to camera space
+            // vec4 cameraNormal = view * vec4(worldNormal, 1.);
+            // cameraNormal = vec4(normalize(cameraNormal.xyz), 1.);
+            // normalBuffer.i[pixelId] = vec4(worldNormal, 1.);
+            // prd.done = true;
+            // prd.hitValue = worldNormal;
+        }
     }
+
 }

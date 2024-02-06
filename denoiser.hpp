@@ -11,7 +11,7 @@ class Denoiser {
 public:
 	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes);
 
-	CUdeviceptr run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer);
+	void run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer);
 
 	~Denoiser();
 
@@ -24,7 +24,7 @@ private:
 	uint width;
 	uint height;
 
-	OptixDenoiserSizes sizes;
+	OptixDenoiserSizes sizes = {};
 
 	CUdeviceptr denoiserBuffer;
 	CUdeviceptr scratchBuffer;
@@ -44,7 +44,7 @@ private:
 	OptixDenoiser handle = NULL;
 	CUdeviceptr denoiserBuffer = NULL;
 	CUdeviceptr scratchBuffer = NULL;
-	OptixDenoiserSizes sizes;
+	OptixDenoiserSizes sizes = { 0, 0, 0, 0, 0, 0, 0 };
 
 	OptixDeviceContext createContext();
 

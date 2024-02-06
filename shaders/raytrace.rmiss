@@ -11,6 +11,6 @@ layout(location = 0) rayPayloadInEXT hitPayload prd;
 void main()
 {   
     prd.done = true;
-    prd.hitValue = vec3(1., 0., 0.);
-    debugPrintfEXT("%d\t|\t", prd.depth);
+    prd.hitValue = vec3(0., 0., 0.);
+    // debugPrintfEXT("%d\t|\t", prd.depth);
 }

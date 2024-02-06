@@ -7,6 +7,11 @@ struct hitPayload
 	uint depth;
 };
 
+struct DenoiserInfo{
+	vec3 albedo;
+	vec3 normal;
+};
+
 struct Vertex{
 	vec4 pos;
 };

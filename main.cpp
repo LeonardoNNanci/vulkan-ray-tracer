@@ -2,6 +2,8 @@
 #include "presentation.hpp"
 #include "command_pool.hpp"
 #include "buffer.hpp"
+#include "buffer_external.hpp"
+#include "denoiser.hpp"
 #include "acceleration_structure.hpp"
 #include "file_reader.hpp"
 #include "descriptor_sets.hpp"
@@ -49,6 +51,7 @@ Model3D cubeModel {
 int main() {
 	auto setup = SetupBuilder()
 		.addExtensions(PresentationBuilder::getRequirements())
+		.addExtensions(BufferExternalBuilder::getRequirements())
 		.addExtensions(AccelerationStructureBuilder::getRequirements())
 		.addExtensions(DescriptorSetsBuilder::getRequirements())
 		.addExtensions(PipelineBuilder::getRequirements())
@@ -56,10 +59,12 @@ int main() {
 	auto presentation = PresentationBuilder(setup).build();
 	auto commandPool = CommandPoolBuilder(setup).build();
 
+	auto WIDTH = presentation->swapchain.extent.width;
+	auto HEIGHT = presentation->swapchain.extent.height;
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
 	//auto bunnyModel = FileReader().readPLY("./models/bunny.ply");
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
-	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2,glm::vec3(1., 0., 0.)), glm::float32{-0.75}, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
+	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
 	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
 	////Instance bunny(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(5.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(.04, -0.037, -.1)), 0);
 	//Instance ceiling(glm::translate(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), -glm::vec3(0., 0., 1.)), glm::vec3(0., 0., 3.)), 0);
@@ -70,29 +75,57 @@ int main() {
 	//Instance cube(glm::rotate(glm::translate(glm::mat4(1.), glm::vec3(0., 0., 0.5)), glm::pi<glm::float32>() / 6, glm::vec3(0., 0., 1.)), 0);
 
 	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
-		.addModel(squareModel)
-		//.addModel(cubeModel)
-		.addModel(dragonModel)
-		//.addModel(bunnyModel)
-		.build();
+			.addModel(squareModel)
+			//.addModel(cubeModel)
+			.addModel(dragonModel)
+			//.addModel(bunnyModel)
+			.build();
 
-	// TODO: change argument to command pool, instead of commandBuffer
+		// TODO: change argument to command pool, instead of commandBuffer
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
-		.addModel3D(squareModel)
-		.addModel3D(dragonModel)
-		//.addModel3D(bunnyModel)
-		//.addModel3D(cubeModel)
-		.addInstance(light, 0)
-		.addInstance(ground, 0)
-		//.addInstance(ceiling, 0)
-		.addInstance(left, 0)
-		.addInstance(right, 0)
-		.addInstance(back, 0)
-		.addInstance(front, 0)
-		.addInstance(dragon, 1)
-		//.addInstance(bunny, 2)
-		//.addInstance(cube, 1)
-		.build();
+			.addModel3D(squareModel)
+			.addModel3D(dragonModel)
+			//.addModel3D(bunnyModel)
+			//.addModel3D(cubeModel)
+			.addInstance(light, 0)
+			.addInstance(ground, 0)
+			//.addInstance(ceiling, 0)
+			.addInstance(left, 0)
+			.addInstance(right, 0)
+			.addInstance(back, 0)
+			.addInstance(front, 0)
+			.addInstance(dragon, 1)
+			//.addInstance(bunny, 2)
+			//.addInstance(cube, 1)
+			.build();
+	auto inputBuffer = BufferExternalBuilder(setup)
+		.setSize(WIDTH * HEIGHT * 4 * sizeof(float))
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setUsage(vk::BufferUsageFlagBits::eTransferDst)
+		.buildExternal();
+	inputBuffer->commandBuffer->setFence();
+	auto albedoBuffer = BufferExternalBuilder(setup)
+		.setSize(WIDTH * HEIGHT * 4 * sizeof(float))
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+		.buildExternal();
+	albedoBuffer->commandBuffer->setFence();
+	auto normalBuffer = BufferExternalBuilder(setup)
+		.setSize(WIDTH * HEIGHT * 4 * sizeof(float))
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+		.buildExternal();
+	normalBuffer->commandBuffer->setFence();
+	auto resultBuffer = BufferExternalBuilder(setup)
+		.setSize(WIDTH * HEIGHT * 4 * sizeof(float))
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
+		.buildExternal();
+	resultBuffer->commandBuffer->setFence();
+
+	auto denoiser = DenoiserBuilder(WIDTH, HEIGHT).build();
 
 	Descriptor bvhDescriptor{
 		.set = 0,
@@ -124,6 +157,18 @@ int main() {
 		.type = vk::DescriptorType::eStorageBuffer,
 		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR,
 	};
+	Descriptor albedoDescriptor{
+		.set = 2,
+		.binding = 0,
+		.type = vk::DescriptorType::eStorageImage,
+		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
+	};
+	Descriptor normalDescriptor{
+		.set = 2,
+		.binding = 1,
+		.type = vk::DescriptorType::eStorageImage,
+		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
+	};
 
 	auto sets = DescriptorSetsBuilder(setup)
 		.addDescriptor(bvhDescriptor)
@@ -131,10 +176,13 @@ int main() {
 		.addDescriptor(vertexBufferDescriptor)
 		.addDescriptor(indexBufferDescriptor)
 		.addDescriptor(objectDescDescriptor)
+		.addDescriptor(albedoDescriptor)
+		.addDescriptor(normalDescriptor)
 		.build();
 
 	auto rayTracingSet = sets[0];
 	auto sceneSet = sets[1];
+	auto denoiserSet = sets[2];
 	rayTracingSet->updateDescriptor(bvhDescriptor, BVH);
 	sceneSet->updateDescriptor(vertexBufferDescriptor, scene->vertexBuffer);
 	sceneSet->updateDescriptor(indexBufferDescriptor, scene->indexBuffer);
@@ -149,24 +197,16 @@ int main() {
 		//.addShader("./shaders/shadow.spv", vk::ShaderStageFlagBits::eMissKHR)
 		.addShader("./shaders/closesthit.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
 		.addShader("./shaders/light.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
+		//.addShader("./shaders/denoiser.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
+		//.addShader("./shaders/denoiser.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
 		.addDescriptorSet(rayTracingSet)
 		.addDescriptorSet(sceneSet)
+		.addDescriptorSet(denoiserSet)
 		.addPushconstant(pc)
 		.build();
 
-	pc.data.clearColor = glm::vec4(0.);
-	pc.data.lightPosition = glm::vec4(-2., 2., 2., 1.);
-	pc.data.lightIntensity = .8;
-	pc.data.lightType = 1;
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	auto cameraPosition = glm::vec4(-5., 0., 1.5, 1.); // glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(2.0f, 2.0f, 2.0f, 1.0f);
-	pc.data.projInv = glm::inverse(glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f));
-	pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
-	pc.data = pc.data;
 	auto commandBuffer = commandPool->createCommandBuffer();
-	commandBuffer->setFence(true);
+	commandBuffer->setFence();
 
 	auto imageReadySemaphore = std::make_shared<Semaphore>(setup);
 	imageReadySemaphore->addSrcStage(vk::PipelineStageFlagBits::eTransfer);
@@ -182,30 +222,58 @@ int main() {
 	auto previousTime = std::chrono::high_resolution_clock::now();
 
 	while (presentation->windowIsOpen()) {
-		commandBuffer->waitFinished();
-		commandBuffer->resetFence();
-
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-		auto cameraPosition =  glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * glm::vec4(3.0f, 3.0f, 2.0f, 1.0f);
-		pc.data.projInv = glm::inverse(glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f));
-		pc.data.viewInv = glm::inverse(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.5f), glm::vec3(0.0f, 0.0f, -1.0f)));
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
+		auto cameraPosition = glm::vec4(3.0f, 3.0f, 1.0f, 1.0f);
+		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
+		pc.data.projInv = glm::inverse(pc.data.proj);
+		pc.data.view = glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f));
+		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
-		//printf("\r%.2f", 1 / deltaTime);
+		printf("\r%.2f", 1 / deltaTime);
 		previousTime = currentTime;
 
 		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore->handle }, {}).value;
-		rayTracingSet->updateDescriptor(imageDescriptor, presentation->swapchain.images[imageIndex]);
+		auto currentImage = presentation->swapchain.images[imageIndex];
+		auto albedoImage = presentation->albedoImages[imageIndex];
+		auto normalImage = presentation->normalImages[imageIndex];
 
 		commandBuffer->begin();
-		presentation->swapchain.images[imageIndex]->clear(commandBuffer);
-		presentation->swapchain.images[imageIndex]->renderBarrier(commandBuffer);
-		pipeline->run(commandBuffer, presentation->swapchain, { pc });
-		presentation->swapchain.images[imageIndex]->presentBarrier(commandBuffer);
+		currentImage->pipelineBarrier(commandBuffer, vk::ImageLayout::eGeneral);
 		commandBuffer->submit();
+		commandBuffer->waitFinished();
+		commandBuffer->resetFence();
+
+		rayTracingSet->updateDescriptor(imageDescriptor, currentImage);
+		denoiserSet->updateDescriptor(albedoDescriptor, albedoImage);
+		denoiserSet->updateDescriptor(normalDescriptor, normalImage);
+
+		commandBuffer->begin();
+		currentImage->clear(commandBuffer);
+		currentImage->renderBarrier(commandBuffer);
+		pipeline->run(commandBuffer, presentation->swapchain, { pc });
+		//presentation->swapchain.images[imageIndex]->presentBarrier(commandBuffer);
+		commandBuffer->submit();
+
+		commandBuffer->waitFinished();
+		commandBuffer->resetFence();
+
+		inputBuffer->fill(currentImage);
+		albedoBuffer->fill(albedoImage);
+		normalBuffer->fill(normalImage);
+		for (auto buffer : { inputBuffer, albedoBuffer, normalBuffer }) {
+			buffer->commandBuffer->waitFinished();
+			buffer->commandBuffer->resetFence();
+		}
+
+		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
+
+		resultBuffer->toImage(currentImage);
+		resultBuffer->commandBuffer->waitFinished();
+		resultBuffer->commandBuffer->resetFence();
 		
 		std::vector<vk::SwapchainKHR> swapchains = { presentation->swapchain.handle };
 		std::vector<uint32_t> imageIndices = { static_cast<uint32_t>(imageIndex) };
@@ -216,5 +284,6 @@ int main() {
 		presentInfo.setWaitSemaphores(renderFinishedSemaphore->handle);
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 	}
+	printf("\n");
 	setup->device.waitIdle();
 }

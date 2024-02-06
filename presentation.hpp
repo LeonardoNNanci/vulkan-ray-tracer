@@ -23,6 +23,8 @@ public:
 	GLFWwindow* window;
 	vk::SurfaceKHR surface;
 	Swapchain swapchain;
+	std::vector<std::shared_ptr<Image>> albedoImages;
+	std::vector<std::shared_ptr<Image>> normalImages;
 
 	Presentation(std::shared_ptr<Setup> setup);
 
@@ -49,4 +51,10 @@ private:
 	Swapchain createSwapchain();
 
 	std::vector<std::shared_ptr<Image>> createImages();
+
+	std::vector<std::shared_ptr<Image>> createDenoiserImages(int nImages);
+
+	vk::DeviceMemory createMemory(vk::Image image);
+
+	uint32_t findMemoryType(uint32_t typeFilter);
 };

@@ -4,12 +4,17 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <optix.h>
+#include "image.hpp"
 
 class BufferExternal : public Buffer {
 public:
 	CUdeviceptr optixBuffer;
 
 	using Buffer::Buffer;
+
+	void fill(std::shared_ptr<Image> image);
+
+	void toImage(std::shared_ptr<Image> image);
 };
 
 class BufferExternalBuilder : private BufferBuilder {

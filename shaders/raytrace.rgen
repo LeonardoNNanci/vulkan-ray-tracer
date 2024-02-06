@@ -11,11 +11,9 @@ layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0, rgba32f) uniform image2D image;
 
 layout(push_constant) uniform constants {
-    vec4 clearColor;
-    vec4 lightPosition;
-    float lightIntensity;
-    int lightType;
+    mat4 proj;
     mat4 projInv;
+    mat4 view;
     mat4 viewInv;
 };
 
@@ -74,6 +72,6 @@ void main()
         prd.depth++;
     }
     if(!prd.done)
-        prd.hitValue = vec3(0., 1., 0.);
+        prd.hitValue = vec3(0., 0., 0.);
     imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.));
 }

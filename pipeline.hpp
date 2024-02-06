@@ -11,11 +11,9 @@
 #include <memory>
 
 struct PushConstantData {
-	alignas(16) glm::vec4 clearColor;
-	alignas(16) glm::vec4 lightPosition;
-	alignas(4)  float lightIntensity;
-	alignas(4)  int lightType;
+	alignas(16) glm::mat4 proj;
 	alignas(16) glm::mat4 projInv;
+	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 viewInv;
 };
 
