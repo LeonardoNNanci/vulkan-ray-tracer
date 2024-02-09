@@ -8,7 +8,7 @@
 #include <optix_stubs.h>
 #include <cuda_runtime_api.h>
 
-uint32_t sizeof_light_pixel = static_cast<uint32_t>(4 * sizeof(float));
+uint32_t sizeof_light_pixel = static_cast<uint32_t>(3 * sizeof(float));
 uint32_t sizeof_albedo_pixel = static_cast<uint32_t>(3 * sizeof(float));
 uint32_t sizeof_normal_pixel = static_cast<uint32_t>(3 * sizeof(float));
 
@@ -47,9 +47,10 @@ OptixDeviceContext DenoiserBuilder::createContext() {
 	if (optixInit() != OPTIX_SUCCESS)
 		throw std::runtime_error("Failed to initialize OptiX!\n");
 
-	OptixDeviceContextOptions options = {};
-	options.logCallbackFunction = &optixLogCallback;
-	options.logCallbackLevel = 4;
+	OptixDeviceContextOptions options = {
+		.logCallbackFunction = &optixLogCallback,
+		.logCallbackLevel = 4
+	};
 
 	OptixDeviceContext context = nullptr;
 	if (optixDeviceContextCreate(cuCtx, &options, &context) != OPTIX_SUCCESS)
@@ -60,19 +61,21 @@ OptixDeviceContext DenoiserBuilder::createContext() {
 CUstream DenoiserBuilder::createStream()
 {
 	CUstream stream;
-	cuStreamCreate(&stream, 0);
+	if (cuStreamCreate(&stream, CU_STREAM_DEFAULT) != CUDA_SUCCESS) {
+		throw std::runtime_error("Failed to create stream!\n");
+	}
 	return stream;
 }
 
 OptixDenoiser DenoiserBuilder::createDenoiser() {
-	auto kind = OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_LDR;
+	auto kind = OPTIX_DENOISER_MODEL_KIND_LDR;
 	
 	OptixDenoiserOptions options{
 		.guideAlbedo = true,
-		.guideNormal = false,
-		.denoiseAlpha = OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_COPY,
+		.guideNormal = false
 	};
 	OptixDenoiser denoiser = nullptr;
+	
 	if (optixDenoiserCreate(this->context, kind, &options, &denoiser) != OPTIX_SUCCESS)
 		throw std::runtime_error("Failed to create OptiX Denoiser!");
 	return denoiser;
@@ -80,14 +83,14 @@ OptixDenoiser DenoiserBuilder::createDenoiser() {
 
 void DenoiserBuilder::setupDenoiser() {
 
-	optixDenoiserComputeMemoryResources(this->handle, this->width, this->height, &this->sizes);
+	optixDenoiserComputeMemoryResources(this->handle, (uint)this->width, (uint)this->height, &this->sizes);
 
-	cudaMalloc((void**)&this->denoiserBuffer, this->sizes.stateSizeInBytes);
-	cudaMalloc((void**)&this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
+	cudaMalloc(reinterpret_cast<void**>(&this->denoiserBuffer), this->sizes.stateSizeInBytes);
+	cudaMalloc(reinterpret_cast<void**>(&this->scratchBuffer), this->sizes.withoutOverlapScratchSizeInBytes);
 
 	cudaDeviceSynchronize();
 	// using default stream 0
-	optixDenoiserSetup(this->handle, this->stream, this->width, this->height, this->denoiserBuffer, this->sizes.stateSizeInBytes, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
+	optixDenoiserSetup(this->handle, 0, this->width, this->height, this->denoiserBuffer, this->sizes.stateSizeInBytes, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
 }
 
 Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes) :
@@ -101,13 +104,13 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 	sizes(sizes)
 {}
 
-void Denoiser::run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer)
+void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer)
 {
-	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, width * height * 4 * sizeof(float), cudaMemcpyDeviceToDevice);
+	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
 	//cudaDeviceSynchronize();
 	try {
 		OptixDenoiserParams params = {
-			.blendFactor = 1.
+			.blendFactor = 0.5
 		};
 	
 		OptixDenoiserGuideLayer guideLayer{
@@ -119,19 +122,19 @@ void Denoiser::run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdevicept
 				.pixelStrideInBytes = sizeof_light_pixel,
 				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
 			},
-			//.normal = {
-			//	.data = normalBuffer,
-			//	.width = this->width,
-			//	.height = this->height,
-			//	.rowStrideInBytes = this->width * sizeof_light_pixel,
-			//	.pixelStrideInBytes = sizeof_light_pixel,
-			//	.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			//}
+			.normal = {
+				.data = normalBuffer,
+				.width = this->width,
+				.height = this->height,
+				.rowStrideInBytes = this->width * sizeof_light_pixel,
+				.pixelStrideInBytes = sizeof_light_pixel,
+				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
+			}
 		};
 	
 		OptixDenoiserLayer layers{
 			.input = {
-				.data = lightBuffer,
+				.data = inputBuffer,
 				.width = this->width,
 				.height = this->height,
 				.rowStrideInBytes = sizeof_light_pixel * this->width,
@@ -145,12 +148,11 @@ void Denoiser::run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdevicept
 				.rowStrideInBytes = sizeof_light_pixel * this->width,
 				.pixelStrideInBytes = sizeof_light_pixel,
 				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			}
+			},
 		};
 		int num_layers = 1;
-		optixDenoiserInvoke(this->handle, this->stream, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, num_layers, 0, 0, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
+		optixDenoiserInvoke(this->handle, 0, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, num_layers, 0, 0, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
 		cudaDeviceSynchronize();
-		cudaStreamSynchronize(this->stream);
 	}
 	catch (const std::exception& e)
 	{

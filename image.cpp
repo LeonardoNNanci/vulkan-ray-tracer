@@ -73,7 +73,7 @@ void Image::presentBarrier(std::shared_ptr<CommandBuffer> commandBuffer) {
 		}
 	};
 	commandBuffer->handle.pipelineBarrier(
-		vk::PipelineStageFlagBits::eRayTracingShaderKHR,
+		vk::PipelineStageFlagBits::eComputeShader,
 		vk::PipelineStageFlagBits::eAllCommands,
 		{},
 		{},
@@ -81,7 +81,7 @@ void Image::presentBarrier(std::shared_ptr<CommandBuffer> commandBuffer) {
 		{ imageBarrier }
 	);
 
-	this->layout = vk::ImageLayout::eGeneral;
+	this->layout = newLayout;
 }
 
 void Image::renderBarrier(std::shared_ptr<CommandBuffer> commandBuffer) {

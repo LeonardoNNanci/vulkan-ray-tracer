@@ -9,8 +9,8 @@ layout(location=0) rayPayloadInEXT hitPayload prd;
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 layout(set=1, binding=2) readonly buffer ModelDescription_ { ModelDescription o[]; } modelDescription;
-layout(set=2, binding=0, rgba32f) uniform image2D albedoImage;
-layout(set=2, binding=1, rgba32f) uniform image2D normalImage;
+layout(set=0, binding=2, rgba32f) uniform image2D albedoImage;
+layout(set=0, binding=3, rgba32f) uniform image2D normalImage;
 hitAttributeEXT vec3 attribs;
 
 layout(push_constant) uniform constants {
@@ -63,15 +63,13 @@ void main()
         
         // denoiser: albedo & normal
         if(prd.depth == 0) {
+            // change  this to camera space
+            vec3 cameraNormal = (view * vec4(worldNormal, 1.)).xyz;
+            cameraNormal = normalize(cameraNormal.xyz);
+            cameraNormal = cameraNormal / 2. + vec3(0.5);
+
             imageStore(albedoImage, ivec2(gl_LaunchIDEXT.xy), vec4(1.));
             imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(worldNormal, 1.));
-            // // change  this to camera space
-            // vec4 cameraNormal = view * vec4(worldNormal, 1.);
-            // cameraNormal = vec4(normalize(cameraNormal.xyz), 1.);
-            // normalBuffer.i[pixelId] = vec4(worldNormal, 1.);
-            // prd.done = true;
-            // prd.hitValue = worldNormal;
         }
     }
-
 }

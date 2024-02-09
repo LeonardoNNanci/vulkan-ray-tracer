@@ -1,7 +1,7 @@
 #include "presentation.hpp"
 
-#define WIDTH 600
-#define HEIGHT 800
+#define WIDTH 900
+#define HEIGHT 900
 
 Presentation::Presentation(std::shared_ptr<Setup> setup) : IHasSetup(setup), window(NULL) {}
 
@@ -124,14 +124,14 @@ std::vector<std::shared_ptr<Image>> PresentationBuilder::createDenoiserImages(in
             .sharingMode = vk::SharingMode::eExclusive,
             .queueFamilyIndexCount = 1,
             .pQueueFamilyIndices = &this->setup->graphicsQueue.familyIndex,
-            .initialLayout = vk::ImageLayout::eGeneral
+            .initialLayout = vk::ImageLayout::eUndefined
     };
     for (int i = 0; i < nImages; i++) {
         // albedo
         auto handle = this->setup->device.createImage(imageInfo);
         auto memory = this->createMemory(handle);
         this->setup->device.bindImageMemory(handle, memory, 0);
-        images[i] = std::make_shared<Image>(this->setup, handle, vk::Format::eR8G8B8Unorm, WIDTH, HEIGHT, memory);
+        images[i] = std::make_shared<Image>(this->setup, handle, vk::Format::eR8G8B8A8Unorm, WIDTH, HEIGHT, memory);
     }
     return images;
 }

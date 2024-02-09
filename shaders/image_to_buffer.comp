@@ -1,0 +1,45 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_shader_image_load_formatted : enable
+#extension GL_EXT_debug_printf : enable
+
+layout(set = 0, binding = 1) uniform image2D g_color;
+layout(set = 0, binding = 2) uniform image2D g_albedo;
+layout(set = 0, binding = 3) uniform image2D g_normal;
+
+layout(set = 0, binding = 4) buffer _buf0 { float g_buffer0[]; };
+layout(set = 0, binding = 5) buffer _buf1 { float g_buffer1[]; };
+layout(set = 0, binding = 6) buffer _buf2 { float g_buffer2[]; };
+
+
+#define GRID_SIZE 16
+layout(local_size_x = GRID_SIZE, local_size_y = GRID_SIZE) in;
+
+
+void main()
+{
+  ivec2 imgSize = imageSize(g_color);
+  ivec2 coord   = ivec2(gl_GlobalInvocationID.xy);
+  if(coord.x >= imgSize.x || coord.y >= imgSize.y)  // Check limits
+    return;
+
+  uint linear = coord.y * imgSize.x * 3 + coord.x * 3;
+
+  vec4 rgbPixel = imageLoad(g_color, coord);
+  g_buffer0[linear] = rgbPixel.r;
+  g_buffer0[linear + 1] = rgbPixel.g;
+  g_buffer0[linear + 2] = rgbPixel.b;
+
+  vec4 albedoPixel = imageLoad(g_albedo, coord);
+  g_buffer1[linear] = albedoPixel.r;
+  g_buffer1[linear + 1] = albedoPixel.g;
+  g_buffer1[linear + 2] = albedoPixel.b;
+  if(linear == 0)
+    debugPrintfEXT("Albedo input:  %v3f\n", albedoPixel.rgb);
+
+  vec3 nrm = imageLoad(g_normal, coord).xyz;
+  nrm = (nrm * 2.0) - 1.0;  // Converting to [-1..1]
+  g_buffer2[linear] = nrm.x;
+  g_buffer2[linear + 1] = nrm.y;
+  g_buffer2[linear + 2] = nrm.z;
+}
