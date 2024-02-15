@@ -29,6 +29,4 @@ void main()
   rgbPixel.a = 1.;
 
   imageStore(inImage0, coord, rgbPixel);
-  if(linear == 0)
-    debugPrintfEXT("Albedo output: %v3f\n", imageLoad(inImage0, coord).rgb);
 }

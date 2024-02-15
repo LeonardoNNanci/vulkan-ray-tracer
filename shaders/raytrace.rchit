@@ -42,20 +42,16 @@ void main()
 	vec3 p3 = vertexBuffer.v[desc.vertexStride + i3].pos.xyz;
 	vec3 objectNormal = normalize(cross((p3 - p2), (p1 - p2)));
     
-    vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 1.));
+    vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 0.));
 
     // backface hit
     if(dot(objectNormal, gl_ObjectRayDirectionEXT) > 0){
         prd.done = true;
         prd.hitValue = vec3(0., 0., 0.);
-        // debugPrintfEXT("%d\n", prd.depth);
     }
     // hit
     else{
         vec3 dir = normalize(rand3());
-        // use when not summing to the normal
-        // if(dot(dir, objectNormal) < 0)
-        //     dir *= -1;
         dir = objectNormal + (dir * 0.999);
         prd.done = false;
         prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT; // * 0.999;
@@ -63,13 +59,14 @@ void main()
         
         // denoiser: albedo & normal
         if(prd.depth == 0) {
-            // change  this to camera space
-            vec3 cameraNormal = (view * vec4(worldNormal, 1.)).xyz;
+            vec3 cameraNormal = (view * vec4(worldNormal, 0.)).xyz;
             cameraNormal = normalize(cameraNormal.xyz);
+            cameraNormal.g = -cameraNormal.g;
             cameraNormal = cameraNormal / 2. + vec3(0.5);
-
+            cameraNormal = normalize(cameraNormal);
             imageStore(albedoImage, ivec2(gl_LaunchIDEXT.xy), vec4(1.));
-            imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(worldNormal, 1.));
+            imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(cameraNormal.rgb, 1.));
+
         }
     }
 }

@@ -299,16 +299,16 @@ int main() {
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle += 45. * deltaTime;
+		angle += 30. * deltaTime;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
 		auto cameraPosition = glm::vec4(3.0f, 3.0f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
-		pc.data.view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
+		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
-		//printf("\r%.2f", 1 / deltaTime);
+		printf("\r%.2f", 1 / deltaTime);
 		previousTime = currentTime;
 
 		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore->handle }, {}).value;

@@ -34,8 +34,6 @@ void main()
   g_buffer1[linear] = albedoPixel.r;
   g_buffer1[linear + 1] = albedoPixel.g;
   g_buffer1[linear + 2] = albedoPixel.b;
-  if(linear == 0)
-    debugPrintfEXT("Albedo input:  %v3f\n", albedoPixel.rgb);
 
   vec3 nrm = imageLoad(g_normal, coord).xyz;
   nrm = (nrm * 2.0) - 1.0;  // Converting to [-1..1]
