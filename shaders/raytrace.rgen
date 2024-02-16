@@ -8,8 +8,7 @@
 layout(location = 0) rayPayloadEXT hitPayload prd;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
-layout(binding = 1, set = 0, rgba32f) uniform image2D image;
-layout(set=0, binding=2, rgba32f) uniform image2D albedoImage;
+layout(set = 0, binding = 4) buffer _buff { float rgbBuffer[]; };
 
 layout(push_constant) uniform constants {
     mat4 proj;
@@ -20,8 +19,6 @@ layout(push_constant) uniform constants {
 
 void main() 
 {
-    imageStore(albedoImage, ivec2(gl_LaunchIDEXT.xy), vec4(vec3(0.5), 1.));
-
     const ivec2 originalCenter = ivec2(gl_LaunchIDEXT.xy);
     // const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
     // const float distance = length(originalCenter - imageCenter);
@@ -71,8 +68,13 @@ void main()
             0               // payload (location = 0)
         );
         prd.depth++;
+        prd.rayDirection.z += .9;
     }
     if(!prd.done)
         prd.hitValue = vec3(0., 0., 0.);
-    imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(prd.hitValue, 1.));
+    uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT .x * 3 + gl_LaunchIDEXT.x * 3;
+
+    rgbBuffer[linear] = prd.hitValue.r;
+    rgbBuffer[linear + 1] = prd.hitValue.g;
+    rgbBuffer[linear + 2] = prd.hitValue.b;
 }

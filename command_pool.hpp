@@ -20,9 +20,9 @@ public:
 
 	void submit();
 
-	void addWaitSemaphore(std::shared_ptr<Semaphore> semaphore);
+	void addWaitSemaphore(std::shared_ptr<Semaphore> semaphore, vk::PipelineStageFlags dstStage, uint64_t waitValue = NULL);
 
-	void addSignalSemaphore(std::shared_ptr<Semaphore> semaphore);
+	void addSignalSemaphore(std::shared_ptr<Semaphore> semaphore, vk::PipelineStageFlags srcStage, uint64_t signalValue = NULL);
 
 	void setFence(bool signaled=false);
 
@@ -30,11 +30,18 @@ public:
 
 	void waitFinished();
 
+	void clearSync();
+
 	~CommandBuffer();
 
 private:
-	std::vector<std::shared_ptr<Semaphore>> waitSemaphores;
-	std::vector<std::shared_ptr<Semaphore>> signalSemaphores;
+	struct SemaphoreInfo {
+		std::shared_ptr<Semaphore> semaphore;
+		uint64_t value;
+		vk::PipelineStageFlags stage;
+	};
+	std::vector<SemaphoreInfo> waitSemaphores;
+	std::vector<SemaphoreInfo> signalSemaphores;
 	vk::Fence fence = VK_NULL_HANDLE;
 
 	void destroyFence();

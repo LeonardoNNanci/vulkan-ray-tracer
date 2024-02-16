@@ -6,11 +6,11 @@
 #include "raycommon.glsl"
 
 layout(location=0) rayPayloadInEXT hitPayload prd;
+layout(set = 0, binding = 5) buffer _buf1 { float albedoBuffer[]; };
+layout(set = 0, binding = 6) buffer _buf2 { float normalBuffer[]; };
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 layout(set=1, binding=2) readonly buffer ModelDescription_ { ModelDescription o[]; } modelDescription;
-layout(set=0, binding=2, rgba32f) uniform image2D albedoImage;
-layout(set=0, binding=3, rgba32f) uniform image2D normalImage;
 hitAttributeEXT vec3 attribs;
 
 layout(push_constant) uniform constants {
@@ -54,19 +54,24 @@ void main()
         vec3 dir = normalize(rand3());
         dir = objectNormal + (dir * 0.999);
         prd.done = false;
-        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT; // * 0.999;
-        prd.rayDirection = gl_ObjectToWorldEXT * vec4(dir, 1.);
+        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+        prd.rayDirection = gl_ObjectToWorldEXT * vec4(dir, 0.);
         
         // denoiser: albedo & normal
         if(prd.depth == 0) {
             vec3 cameraNormal = (view * vec4(worldNormal, 0.)).xyz;
             cameraNormal = normalize(cameraNormal.xyz);
             cameraNormal.g = -cameraNormal.g;
-            cameraNormal = cameraNormal / 2. + vec3(0.5);
-            cameraNormal = normalize(cameraNormal);
-            imageStore(albedoImage, ivec2(gl_LaunchIDEXT.xy), vec4(1.));
-            imageStore(normalImage, ivec2(gl_LaunchIDEXT.xy), vec4(cameraNormal.rgb, 1.));
 
+            uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
+
+            albedoBuffer[linear] = 1.;
+            albedoBuffer[linear + 1] = 1.;
+            albedoBuffer[linear + 2] = 1.;
+
+            normalBuffer[linear] = cameraNormal.x;
+            normalBuffer[linear + 1] = cameraNormal.y;
+            normalBuffer[linear + 2] = cameraNormal.z;
         }
     }
 }

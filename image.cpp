@@ -21,7 +21,7 @@ Image::Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format, 
 		}
 	};
 	this->view = this->setup->device.createImageView(imageViewInfo);
-	this->layout = vk::ImageLayout::eGeneral;
+	this->layout = vk::ImageLayout::eUndefined;
 }
 
 void Image::pipelineBarrier(std::shared_ptr<CommandBuffer> commandBuffer, vk::ImageLayout newLayout) {

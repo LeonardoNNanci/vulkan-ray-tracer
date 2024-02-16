@@ -12,6 +12,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
+uint64_t timelineTracker = 0;
+
 Model3D squareModel {
 	.vertices = {
 		{{ -1., 1.,  0., 0.5 }},
@@ -23,30 +25,6 @@ Model3D squareModel {
 		3, 2, 1}
 };
 
-Model3D cubeModel {
-	.vertices = {
-		{ { -.5, .5, -.5, 1. }},
-		{ { .5,  .5, -.5, 1. } },
-		{ { -.5, -.5, -.5, 1. } },
-		{ { .5, -.5, -.5, 1. } },
-		{ { -.5,  .5,  .5, 1. } },
-		{ { .5,  .5,  .5, 1. } },
-		{ { -.5, -.5,  .5, 1. } },
-		{ { .5, -.5,  .5, 1. } }},
-	.indices = {
-		0, 1, 2, // Side 0
-		2, 1, 3,
-		4, 0, 6, // Side 1
-		6, 0, 2,
-		7, 5, 6, // Side 2
-		6, 5, 4,
-		3, 1, 7, // Side 3 
-		7, 1, 5,
-		4, 5, 0, // Side 4 
-		0, 5, 1,
-		3, 7, 2, // Side 5 
-		2, 7, 6,}
-};
 #include<iostream>
 
 std::shared_ptr< Pipeline > createComputePipeline(std::shared_ptr<Setup> setup, const char* shaderFile,
@@ -114,27 +92,19 @@ int main() {
 
 	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
 			.addModel(squareModel)
-			//.addModel(cubeModel)
 			.addModel(dragonModel)
-			//.addModel(bunnyModel)
 			.build();
 
-		// TODO: change argument to command pool, instead of commandBuffer
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.addModel3D(squareModel)
 			.addModel3D(dragonModel)
-			//.addModel3D(bunnyModel)
-			//.addModel3D(cubeModel)
 			.addInstance(light, 0)
 			.addInstance(ground, 0)
-			//.addInstance(ceiling, 0)
 			.addInstance(left, 0)
 			.addInstance(right, 0)
 			.addInstance(back, 0)
 			.addInstance(front, 0)
 			.addInstance(dragon, 1)
-			//.addInstance(bunny, 2)
-			//.addInstance(cube, 1)
 			.build();
 	auto inputBuffer = BufferExternalBuilder(setup)
 		.setSize(WIDTH * HEIGHT * 3 * sizeof(float))
@@ -177,18 +147,18 @@ int main() {
 		.type = vk::DescriptorType::eStorageImage,
 		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
-	Descriptor albedoImageDescriptor{
-		.set = 0,
-		.binding = 2,
-		.type = vk::DescriptorType::eStorageImage,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eClosestHitKHR
-	};
-	Descriptor normalImageDescriptor{
-		.set = 0,
-		.binding = 3,
-		.type = vk::DescriptorType::eStorageImage,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eClosestHitKHR
-	};
+	//Descriptor albedoImageDescriptor{
+	//	.set = 0,
+	//	.binding = 2,
+	//	.type = vk::DescriptorType::eStorageImage,
+	//	.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eClosestHitKHR
+	//};
+	//Descriptor normalImageDescriptor{
+	//	.set = 0,
+	//	.binding = 3,
+	//	.type = vk::DescriptorType::eStorageImage,
+	//	.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eClosestHitKHR
+	//};
 	Descriptor vertexBufferDescriptor{
 		.set = 1,
 		.binding = 0,
@@ -211,19 +181,19 @@ int main() {
 		.set = 0,
 		.binding = 4,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
 	};
 	Descriptor albedoDescriptor{
 		.set = 0,
 		.binding = 5,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
 	};
 	Descriptor normalDescriptor{
 		.set = 0,
 		.binding = 6,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
 	};
 	Descriptor resultDescriptor{
 		.set = 0,
@@ -235,8 +205,8 @@ int main() {
 	auto sets = DescriptorSetsBuilder(setup)
 		.addDescriptor(bvhDescriptor)
 		.addDescriptor(rgbaImageDescriptor)
-		.addDescriptor(albedoImageDescriptor)
-		.addDescriptor(normalImageDescriptor)
+		//.addDescriptor(albedoImageDescriptor)
+		//.addDescriptor(normalImageDescriptor)
 		.addDescriptor(vertexBufferDescriptor)
 		.addDescriptor(indexBufferDescriptor)
 		.addDescriptor(objectDescDescriptor)
@@ -275,25 +245,26 @@ int main() {
 		.build();
 
 	auto bufferToImage = createComputePipeline(setup, "./shaders/buffer_to_image.spv", { rayTracingSet->layout }, {});
-	auto imageToBuffer = createComputePipeline(setup, "./shaders/image_to_buffer.spv", { rayTracingSet->layout }, {});
+	//auto imageToBuffer = createComputePipeline(setup, "./shaders/image_to_buffer.spv", { rayTracingSet->layout }, {});
 
-	auto commandBuffer = commandPool->createCommandBuffer();
-	commandBuffer->setFence();
+	//auto commandBuffer = commandPool->createCommandBuffer();
+	//commandBuffer->setFence();
 
 	auto imageReadySemaphore = std::make_shared<Semaphore>(setup);
-	imageReadySemaphore->addSrcStage(vk::PipelineStageFlagBits::eTransfer);
-	imageReadySemaphore->addDstStage(vk::PipelineStageFlagBits::eRayTracingShaderKHR);
-
 	auto renderFinishedSemaphore = std::make_shared<Semaphore>(setup);
-	renderFinishedSemaphore->addSrcStage(vk::PipelineStageFlagBits::eRayTracingShaderKHR);
-	renderFinishedSemaphore->addSrcStage(vk::PipelineStageFlagBits::eAllCommands);
+	auto timelineSemaphore = std::make_shared<Semaphore>(setup, timelineTracker);
 
-	commandBuffer->addWaitSemaphore(imageReadySemaphore);
-	commandBuffer->addSignalSemaphore(renderFinishedSemaphore);
-	auto copy_buffer = commandPool->createCommandBuffer();
-	copy_buffer->setFence();
-	auto other_buffer = commandPool->createCommandBuffer();
-	other_buffer->setFence();
+	auto layoutChangeBuffer = commandPool->createCommandBuffer();
+	auto rayTracingBuffer = commandPool->createCommandBuffer();
+	auto imgToArrayBuffer = commandPool->createCommandBuffer();
+	auto arrayToImgBuffer = commandPool->createCommandBuffer();
+
+	//layoutChangeBuffer->begin();
+	//for (auto& img : presentation->albedoImages)
+	//	img->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
+	//layoutChangeBuffer->submit();
+	//layoutChangeBuffer->waitFinished();
+
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
 	while (presentation->windowIsOpen()) {
@@ -316,53 +287,57 @@ int main() {
 		auto albedoImage = presentation->albedoImages[imageIndex];
 		auto normalImage = presentation->normalImages[imageIndex];
 
-		commandBuffer->begin();
-		currentImage->pipelineBarrier(commandBuffer, vk::ImageLayout::eGeneral);
-		commandBuffer->submit();
-		commandBuffer->waitFinished();
-		commandBuffer->resetFence();
+		timelineSemaphore->waitSignaled(timelineTracker);
+		layoutChangeBuffer->clearSync();
+		rayTracingBuffer->clearSync();
+		arrayToImgBuffer->clearSync();
+
+		layoutChangeBuffer->addWaitSemaphore(imageReadySemaphore, vk::PipelineStageFlagBits::eAllCommands);
+		layoutChangeBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
+		layoutChangeBuffer->begin();
+		currentImage->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
+		layoutChangeBuffer->submit();
+		layoutChangeBuffer->waitFinished();
 
 		rayTracingSet->updateDescriptor(rgbaImageDescriptor, currentImage);
-		rayTracingSet->updateDescriptor(albedoImageDescriptor, albedoImage);
-		rayTracingSet->updateDescriptor(normalImageDescriptor, normalImage);
+		//rayTracingSet->updateDescriptor(albedoImageDescriptor, albedoImage);
+		//rayTracingSet->updateDescriptor(normalImageDescriptor, normalImage);
 
-		commandBuffer->begin();
-		currentImage->clear(commandBuffer);
-		currentImage->renderBarrier(commandBuffer);
-		rayTracingPipeline->run(commandBuffer, presentation->swapchain, { pc });
-		//presentation->swapchain.images[imageIndex]->presentBarrier(commandBuffer);
-		commandBuffer->submit();
-		commandBuffer->waitFinished();
-		commandBuffer->resetFence();
+		rayTracingBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eRayTracingShaderKHR, timelineTracker);
+		rayTracingBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
+		rayTracingBuffer->begin();
+		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, { pc });
+		rayTracingBuffer->submit();
+		rayTracingBuffer->waitFinished();
 
-
-		copy_buffer->begin();
-		copy_buffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, imageToBuffer->handle);
-		copy_buffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, imageToBuffer->layout, 0, { rayTracingSet->handle }, {0});
-		copy_buffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
-		copy_buffer->submit();
-		copy_buffer->waitFinished();
-		copy_buffer->resetFence();
+		//imgToArrayBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, timelineTracker);
+		//imgToArrayBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
+		//imgToArrayBuffer->begin();
+		//imgToArrayBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, imageToBuffer->handle);
+		//imgToArrayBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, imageToBuffer->layout, 0, { rayTracingSet->handle }, {0});
+		//imgToArrayBuffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
+		//imgToArrayBuffer->submit();
+		//imgToArrayBuffer->waitFinished();
 
 		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
 
-		other_buffer->begin();
-		other_buffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, bufferToImage->handle);
-		other_buffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, bufferToImage->layout, 0, { rayTracingSet->handle }, { 0 });
-		other_buffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
-		currentImage->presentBarrier(other_buffer);
-		other_buffer->submit();
-		other_buffer->waitFinished();
-		other_buffer->resetFence();
+		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
+		arrayToImgBuffer->addSignalSemaphore(renderFinishedSemaphore, vk::PipelineStageFlagBits::eAllCommands);
+		arrayToImgBuffer->begin();
+		arrayToImgBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, bufferToImage->handle);
+		arrayToImgBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, bufferToImage->layout, 0, { rayTracingSet->handle }, { 0 });
+		arrayToImgBuffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
+		currentImage->presentBarrier(arrayToImgBuffer);
+		arrayToImgBuffer->submit();
 		
 		std::vector<vk::SwapchainKHR> swapchains = { presentation->swapchain.handle };
 		std::vector<uint32_t> imageIndices = { static_cast<uint32_t>(imageIndex) };
-
 		vk::PresentInfoKHR presentInfo{};
 		presentInfo.setSwapchains(swapchains);
 		presentInfo.setImageIndices(imageIndices);
 		presentInfo.setWaitSemaphores(renderFinishedSemaphore->handle);
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
+
 	}
 	printf("\n");
 	setup->device.waitIdle();

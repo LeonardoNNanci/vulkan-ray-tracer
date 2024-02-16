@@ -250,7 +250,7 @@ Pipeline::~Pipeline() {
     this->setup->device.destroyPipeline(this->handle);
 }
 
-void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, Swapchain swapchain, std::vector<PushConstant> pushConstants) {
+void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<PushConstant> pushConstants) {
     std::vector<vk::DescriptorSet> descriptorSetHandles(this->descriptorSets.size());
     std::transform(this->descriptorSets.begin(), this->descriptorSets.end(), descriptorSetHandles.begin(), [](std::shared_ptr<DescriptorSet> x) { return x->handle; });
 
@@ -260,7 +260,7 @@ void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, Swapchain swapc
     commandBuffer->handle.pushConstants(this->layout,
         pushConstant.stagesUsed,
         0, pushConstant.size(), pushConstant.pointer());
-    commandBuffer->handle.traceRaysKHR(this->SBT.rayGenRegion, this->SBT.missRegion, this->SBT.hitRegion, this->SBT.callRegion, swapchain.extent.width, swapchain.extent.height, 1);
+    commandBuffer->handle.traceRaysKHR(this->SBT.rayGenRegion, this->SBT.missRegion, this->SBT.hitRegion, this->SBT.callRegion, extent.width, extent.height, 1);
 }
 
 uint32_t PushConstant::size()

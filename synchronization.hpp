@@ -6,14 +6,11 @@
 class Semaphore : IHasSetup {
 public:
 	vk::Semaphore handle;
-	vk::PipelineStageFlags srcStages;
-	vk::PipelineStageFlags dstStages;
+	vk::SemaphoreType type;
 
-	Semaphore(std::shared_ptr<Setup> setup);
+	Semaphore(std::shared_ptr<Setup> setup, uint64_t initialValue=UINT64_MAX);
 
-	void addSrcStage(vk::PipelineStageFlags stage);
-	
-	void addDstStage(vk::PipelineStageFlags stage);
+	void waitSignaled(uint64_t value);
 
 	~Semaphore();
 };

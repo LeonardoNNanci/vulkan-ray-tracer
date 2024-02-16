@@ -79,7 +79,11 @@ vk::Device SetupBuilder::createDevice()
         .pQueuePriorities = priorities
     };
 
+    vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures{
+        .timelineSemaphore = vk::True
+    };
     vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{
+        .pNext = &timelineSemaphoreFeatures,
         .rayTracingPipeline = vk::True
     };
     vk::PhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures{

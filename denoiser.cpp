@@ -106,6 +106,8 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 
 void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer)
 {
+	//cudaMemcpy((void*)outputBuffer, (void*)inputBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
+	//cudaDeviceSynchronize();
 	try {
 		OptixDenoiserParams params = {
 			.blendFactor = 0.

@@ -46,7 +46,7 @@ public:
 
 	Pipeline(std::shared_ptr<Setup> setup);
 
-	void run(std::shared_ptr<CommandBuffer> commandBuffer, Swapchain swapchain, std::vector<PushConstant> pushConstants);
+	void run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<PushConstant> pushConstants);
 
 	~Pipeline();
 };

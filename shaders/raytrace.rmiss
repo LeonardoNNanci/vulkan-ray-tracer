@@ -12,5 +12,4 @@ void main()
 {   
     prd.done = true;
     prd.hitValue = vec3(0., 0., 0.);
-    // debugPrintfEXT("%d\t|\t", prd.depth);
 }
