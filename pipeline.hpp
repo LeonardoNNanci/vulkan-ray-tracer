@@ -41,12 +41,12 @@ public:
 	vk::Pipeline handle;
 	vk::PipelineLayout layout;
 	ShaderBindingTable SBT;
-	std::vector<std::shared_ptr<DescriptorSet>> descriptorSets;
+	//std::vector<std::shared_ptr<DescriptorSet>> descriptorSets;
 
 
 	Pipeline(std::shared_ptr<Setup> setup);
 
-	void run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<PushConstant> pushConstants);
+	void run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<std::shared_ptr<DescriptorSet>> descriptorSets, std::vector<PushConstant> pushConstants);
 
 	~Pipeline();
 };

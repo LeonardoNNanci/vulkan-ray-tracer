@@ -33,7 +33,7 @@ std::shared_ptr<Pipeline> PipelineBuilder::build()
     pipeline->handle = handle;
     pipeline->layout = pipelineLayout;
     pipeline->SBT = shaderBindingTable;
-    pipeline->descriptorSets = this->descriptorSets;
+    //pipeline->descriptorSets = this->descriptorSets;
 
     for (auto& shaderModule : this->shaderModules) {
         this->setup->device.destroyShaderModule(shaderModule);
@@ -250,9 +250,9 @@ Pipeline::~Pipeline() {
     this->setup->device.destroyPipeline(this->handle);
 }
 
-void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<PushConstant> pushConstants) {
-    std::vector<vk::DescriptorSet> descriptorSetHandles(this->descriptorSets.size());
-    std::transform(this->descriptorSets.begin(), this->descriptorSets.end(), descriptorSetHandles.begin(), [](std::shared_ptr<DescriptorSet> x) { return x->handle; });
+void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<std::shared_ptr<DescriptorSet>> descriptorSets, std::vector<PushConstant> pushConstants) {
+    std::vector<vk::DescriptorSet> descriptorSetHandles(descriptorSets.size());
+    std::transform(descriptorSets.begin(), descriptorSets.end(), descriptorSetHandles.begin(), [](std::shared_ptr<DescriptorSet> x) { return x->handle; });
 
     commandBuffer->handle.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, this->handle);
     commandBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, this->layout, 0, descriptorSetHandles, {});

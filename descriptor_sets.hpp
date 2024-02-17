@@ -43,18 +43,18 @@ private:
 	std::vector<vk::WriteDescriptorSet> writes;
 };
 
-class DescriptorSetsBuilder : public Builder<std::vector<std::shared_ptr<DescriptorSet>>>, IHasSetup {
+class DescriptorSetBuilder : public Builder<std::shared_ptr<DescriptorSet>>, IHasSetup {
 public:
 	static Requirements getRequirements();
 	
-	DescriptorSetsBuilder(std::shared_ptr<Setup> setup);
+	DescriptorSetBuilder(std::shared_ptr<Setup> setup);
 
-	std::vector<std::shared_ptr<DescriptorSet>> build();
+	std::shared_ptr<DescriptorSet> build();
 
-	DescriptorSetsBuilder addDescriptor(Descriptor descriptor);
+	DescriptorSetBuilder addBinding(Descriptor binding);
 
 private:
-	uint32_t nSets = 0;
+	uint32_t index;
 
 	std::vector<Descriptor> descriptors;
 

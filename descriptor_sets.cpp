@@ -68,7 +68,7 @@ DescriptorPool::~DescriptorPool() {
     this->setup->device.destroyDescriptorPool(this->handle);
 }
 
-Requirements DescriptorSetsBuilder::getRequirements()
+Requirements DescriptorSetBuilder::getRequirements()
 {
     Requirements extensions;
     extensions.deviceExtensions = {
@@ -76,64 +76,51 @@ Requirements DescriptorSetsBuilder::getRequirements()
     return extensions;
 }
 
-DescriptorSetsBuilder::DescriptorSetsBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
+DescriptorSetBuilder::DescriptorSetBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup), index(index) {}
 
-std::vector<std::shared_ptr<DescriptorSet>> DescriptorSetsBuilder::build() {
+std::shared_ptr<DescriptorSet> DescriptorSetBuilder::build() {
     auto pool = this->createDescriptorPool();
-    std::vector<vk::DescriptorSetLayout> layouts(this->nSets);
-
-    for (int setIndex = 0; setIndex < this->nSets; setIndex++) {
-        // filter descriptors
-        std::vector<Descriptor> descriptorsInSet;
-        for (auto descriptor : this->descriptors)
-            if (descriptor.set == setIndex)
-                descriptorsInSet.push_back(descriptor);
-
-        // declare bindings
-        std::vector<vk::DescriptorSetLayoutBinding> bindings;
-        bindings.reserve(descriptorsInSet.size());
-        for (auto descriptor : descriptorsInSet){
-            vk::DescriptorSetLayoutBinding binding{
-                .binding = descriptor.binding,
-                .descriptorType = descriptor.type,
-                .descriptorCount = 1,
-                .stageFlags = descriptor.stagesUsed
-            };
-            bindings.emplace_back(binding);
-        }
-
-        // create layout
-        vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.setBindings(bindings);
-        layouts[setIndex] = this->setup->device.createDescriptorSetLayout(layoutInfo);
+    vk::DescriptorSetLayout layout;
+    
+    // declare bindings
+    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    bindings.reserve(this->descriptors.size());
+    for (auto descriptor : this->descriptors){
+        vk::DescriptorSetLayoutBinding binding{
+            .binding = descriptor.binding,
+            .descriptorType = descriptor.type,
+            .descriptorCount = 1,
+            .stageFlags = descriptor.stagesUsed
+        };
+        bindings.emplace_back(binding);
     }
+
+    // create layout
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.setBindings(bindings);
+    layout = this->setup->device.createDescriptorSetLayout(layoutInfo);
 
     // allocate sets
     vk::DescriptorSetAllocateInfo setInfo{
         .descriptorPool = pool->handle
     };
-    setInfo.setSetLayouts(layouts);
-    auto handles = this->setup->device.allocateDescriptorSets(setInfo);
+    setInfo.setSetLayouts(layout);
+    auto handle = this->setup->device.allocateDescriptorSets(setInfo)[0];
 
     // create objects
-    std::vector<std::shared_ptr<DescriptorSet>> sets(this->nSets);
-    for (int setIndex = 0; setIndex < this->nSets; setIndex++) {
-        auto set = std::make_shared<DescriptorSet>(this->setup, pool);
-        set->handle = handles[setIndex];
-        set->layout = layouts[setIndex];
-        sets[setIndex] = set;
-    }
+    auto set = std::make_shared<DescriptorSet>(this->setup, pool);
+    set->handle = handle;
+    set->layout = layout;
 
-    return sets;
+    return set;
 }
 
-DescriptorSetsBuilder DescriptorSetsBuilder::addDescriptor(Descriptor descriptor) {
-    this->nSets = max(this->nSets, descriptor.set + 1);
+DescriptorSetBuilder DescriptorSetBuilder::addBinding(Descriptor descriptor) {
     this->descriptors.push_back(descriptor);
     return *this;
 }
 
-std::shared_ptr<DescriptorPool> DescriptorSetsBuilder::createDescriptorPool()
+std::shared_ptr<DescriptorPool> DescriptorSetBuilder::createDescriptorPool()
 {
     std::vector<vk::DescriptorPoolSize> poolSizes({
         {
@@ -151,7 +138,7 @@ std::shared_ptr<DescriptorPool> DescriptorSetsBuilder::createDescriptorPool()
         });
     vk::DescriptorPoolCreateInfo poolInfo{
         .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-        .maxSets = 10,
+        .maxSets = 1,
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data()
     };
