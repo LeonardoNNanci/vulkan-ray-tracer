@@ -6,8 +6,11 @@ AccelerationStructureBuilder::AccelerationStructureBuilder(std::shared_ptr<Setup
 std::shared_ptr<AccelerationStructure> AccelerationStructureBuilder::build()
 {   
     this->commandBuffer->setFence();
-    this->bottomLevelStructures.reserve(this->models.size());
-    for (auto model : this->models) {
+
+
+
+    this->bottomLevelStructures.reserve(this->scene->models.size());
+    for (auto model : this->scene->models) {
         this->bottomLevelStructures.emplace_back(createBottomLevel(model));
     }
     auto topLevel = createTopLevel();
@@ -19,14 +22,20 @@ std::shared_ptr<AccelerationStructure> AccelerationStructureBuilder::build()
     return accelerationStructure;
 }
 
-AccelerationStructureBuilder AccelerationStructureBuilder::addModel3D(Model3D model) {
-	this->models.push_back(model);
-	return *this;
-}
+//AccelerationStructureBuilder AccelerationStructureBuilder::addModel3D(Model3D model) {
+//	this->models.push_back(model);
+//	return *this;
+//}
+//
+//AccelerationStructureBuilder AccelerationStructureBuilder::addInstance(Instance instance, uint32_t modelIndex) {
+//	this->instances.push_back({instance, modelIndex});
+//	return *this;
+//}
 
-AccelerationStructureBuilder AccelerationStructureBuilder::addInstance(Instance instance, uint32_t modelIndex) {
-	this->instances.push_back({instance, modelIndex});
-	return *this;
+AccelerationStructureBuilder AccelerationStructureBuilder::setScene(std::shared_ptr<Scene> scene)
+{
+    this->scene = scene;
+    return *this;
 }
 
 Requirements AccelerationStructureBuilder::getRequirements()
@@ -45,31 +54,10 @@ AccelerationStructureBuilder::~AccelerationStructureBuilder() {
 
 std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottomLevel(Model3D model)
 {
-    auto vertexBuffer = BufferBuilder(this->setup)
-        .setSize(model.vertices.size() * sizeof(model.vertices[0]))
-        .setCommandBuffer(this->commandBuffer)
-        .setUsage(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)
-        .setUsage(vk::BufferUsageFlagBits::eShaderDeviceAddress)
-        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
-        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
-        .build();
-    auto indexBuffer = BufferBuilder(this->setup)
-        .setSize(model.indices.size() * sizeof(model.indices[0]))
-        .setCommandBuffer(this->commandBuffer)
-        .setUsage(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)
-        .setUsage(vk::BufferUsageFlagBits::eShaderDeviceAddress)
-        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
-        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
-        .build();
-    vertexBuffer->fill(model.vertices);
-    this->commandBuffer->resetFence();
-    indexBuffer->fill(model.indices);
-    this->commandBuffer->resetFence();
-
     vk::AccelerationStructureBuildRangeInfoKHR rangeInfo{
         .primitiveCount = static_cast<uint32_t>(model.indices.size() / 3), //faces
-        .primitiveOffset = 0,
-        .firstVertex = 0,
+        .primitiveOffset = model.indexOffset * sizeof(uint32_t),
+        .firstVertex = model.vertexOffset,
         .transformOffset = 0
     };
 
@@ -77,11 +65,11 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
 
     vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData{
         .vertexFormat = descriptions[0].format,
-        .vertexData = {.deviceAddress = vertexBuffer->getDeviceAddress()}, // vertex buffer address
+        .vertexData = {.deviceAddress = this->scene->vertexBuffer->getDeviceAddress()}, // vertex buffer address
         .vertexStride = sizeof(Vertex),
-        .maxVertex = static_cast<uint32_t>(model.vertices.size() - 1),
+        .maxVertex = static_cast<uint32_t>(model.vertexOffset + model.vertices.size() - 1),
         .indexType = vk::IndexType::eUint32,
-        .indexData = {.deviceAddress = indexBuffer->getDeviceAddress()} // index buffer address
+        .indexData = {.deviceAddress = this->scene->indexBuffer->getDeviceAddress()} // index buffer address
     };
 
     vk::AccelerationStructureGeometryDataKHR geometryData{
@@ -143,8 +131,8 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
     auto bottomLevelStructure = std::make_shared<BottomLevelStructure>(this->setup);
     bottomLevelStructure->handle = handle;
     bottomLevelStructure->buffer = bottomLevelStructureBuffer;
-    bottomLevelStructure->vertexBuffer = vertexBuffer;
-    bottomLevelStructure->indexBuffer = indexBuffer;
+    bottomLevelStructure->vertexBuffer = this->scene->vertexBuffer;
+    bottomLevelStructure->indexBuffer = this->scene->indexBuffer;
 
     return bottomLevelStructure;
 }
@@ -152,12 +140,12 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
 std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel()
 {
     std::vector<vk::AccelerationStructureInstanceKHR> bottomLevelInstances;
-    bottomLevelInstances.reserve(this->instances.size());
+    bottomLevelInstances.reserve(this->scene->instances.size());
 
     uint32_t i = 0;
-    for (auto& [instance, modelIndex] : this->instances) {
+    for (auto& instance : this->scene->instances) {
         vk::AccelerationStructureDeviceAddressInfoKHR addressInfo{
-            .accelerationStructure = this->bottomLevelStructures[modelIndex]->handle
+            .accelerationStructure = this->bottomLevelStructures[instance.modelId]->handle
         };
         auto BLASAddress = this->setup->device.getAccelerationStructureAddressKHR(addressInfo);
 
@@ -167,7 +155,7 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
                     instance.transform[0][1], instance.transform[1][1], instance.transform[2][1], instance.transform[3][1],
                     instance.transform[0][2], instance.transform[1][2], instance.transform[2][2], instance.transform[3][2]
             }}},
-            .instanceCustomIndex = modelIndex,
+            .instanceCustomIndex = instance.modelId,
             .mask = 0xFF,
             .instanceShaderBindingTableRecordOffset = instance.hitShaderOffset,
             .accelerationStructureReference = BLASAddress
@@ -210,7 +198,7 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
         .pGeometries = &TLASGeometry
     };
 
-    auto sizeInfo = this->setup->device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, this->instances.size());
+    auto sizeInfo = this->setup->device.getAccelerationStructureBuildSizesKHR(vk::AccelerationStructureBuildTypeKHR::eDevice, buildInfo, this->scene->instances.size());
     auto topLevelBuffer = BufferBuilder(this->setup)
         .setSize(sizeInfo.accelerationStructureSize)
         .setUsage(vk::BufferUsageFlagBits::eTransferDst)
@@ -239,7 +227,7 @@ std::shared_ptr<TopLevelStructure> AccelerationStructureBuilder::createTopLevel(
     buildInfo.setDstAccelerationStructure(handle);
 
     vk::AccelerationStructureBuildRangeInfoKHR buildOffsetInfo{
-        .primitiveCount = static_cast<uint32_t>(this->instances.size()),
+        .primitiveCount = static_cast<uint32_t>(this->scene->instances.size()),
         .primitiveOffset = 0,
         .firstVertex = 0
     };

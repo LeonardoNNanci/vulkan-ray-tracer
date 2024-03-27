@@ -36,6 +36,8 @@ class AccelerationStructure{
 public:
 	std::shared_ptr<TopLevelStructure> topLevel;
 	std::vector<std::shared_ptr<BottomLevelStructure>> bottomLevel;
+	std::shared_ptr<Buffer> vertexBuffer;
+	std::shared_ptr<Buffer> indexBuffer;
 
 	AccelerationStructure();
 };
@@ -48,9 +50,11 @@ public:
 
 	std::shared_ptr<AccelerationStructure> build();
 
-	AccelerationStructureBuilder addModel3D(Model3D model);
+	//AccelerationStructureBuilder addModel3D(Model3D model);
 
-	AccelerationStructureBuilder addInstance(Instance instance, uint32_t modelIndex);
+	//AccelerationStructureBuilder addInstance(Instance instance, uint32_t modelIndex);
+
+	AccelerationStructureBuilder setScene(std::shared_ptr<Scene> scene);
 
 	static Requirements getRequirements();
 
@@ -58,10 +62,9 @@ public:
 
 private:
 	vk::DeviceSize size;
-	std::vector<Model3D> models;
-	std::vector <std::tuple<Instance, uint32_t>> instances;
-
 	std::vector<std::shared_ptr<BottomLevelStructure>> bottomLevelStructures;
+
+	std::shared_ptr<Scene> scene;
 
 	std::shared_ptr<BottomLevelStructure> createBottomLevel(Model3D model);
 

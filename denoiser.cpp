@@ -72,7 +72,8 @@ OptixDenoiser DenoiserBuilder::createDenoiser() {
 	
 	OptixDenoiserOptions options{
 		.guideAlbedo = true,
-		.guideNormal = true
+		.guideNormal = true,
+		.denoiseAlpha = OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE
 	};
 	OptixDenoiser denoiser = nullptr;
 	
@@ -106,11 +107,11 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 
 void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer)
 {
-	//cudaMemcpy((void*)outputBuffer, (void*)inputBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
+	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
 	//cudaDeviceSynchronize();
 	try {
 		OptixDenoiserParams params = {
-			.blendFactor = 0.
+			.blendFactor = 0.5
 		};
 	
 		OptixDenoiserGuideLayer guideLayer{
@@ -129,7 +130,7 @@ void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdevicept
 				.rowStrideInBytes = this->width * sizeof_light_pixel,
 				.pixelStrideInBytes = sizeof_light_pixel,
 				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			}
+			},
 		};
 	
 		OptixDenoiserLayer layers{

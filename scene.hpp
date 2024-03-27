@@ -17,6 +17,8 @@ struct Vertex {
 
 class Model3D {
 public:
+	uint32_t vertexOffset;
+	uint32_t indexOffset;
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 };
@@ -32,6 +34,8 @@ public:
 
 class Scene {
 public:
+	std::vector<Model3D> models;
+	std::vector<Instance> instances;
 	std::shared_ptr<Buffer> vertexBuffer;
 	std::shared_ptr<Buffer> indexBuffer;
 	std::shared_ptr<Buffer> objectDescriptionBuffer;
@@ -48,9 +52,12 @@ public:
 
 	SceneBuilder addModel(Model3D model);
 
+	SceneBuilder addInstance(Instance instance);
+
 	std::shared_ptr<Scene> build();
 
 private:
 	std::vector<Model3D> models;
+	std::vector <Instance> instances;
 	std::shared_ptr<CommandBuffer> commandBuffer;
 };

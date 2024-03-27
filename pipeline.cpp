@@ -250,7 +250,24 @@ Pipeline::~Pipeline() {
     this->setup->device.destroyPipeline(this->handle);
 }
 
-void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<std::shared_ptr<DescriptorSet>> descriptorSets, std::vector<PushConstant> pushConstants) {
+std::pair<int, int> calcNumThreads(std::vector<std::pair<int, int>> ranges, vk::Extent2D extent) {
+    int numThreads = 0;
+    int accumulator = 0;
+    for (auto& [ratio, length] : ranges) {
+        numThreads += length / ratio;
+        accumulator += length;
+    }
+
+    int w = numThreads, h = numThreads;
+    if (accumulator < extent.width / 2)
+        w += (extent.width - accumulator) / ranges.back().first;
+    if (accumulator < extent.height / 2)
+        h += (extent.height - accumulator) / ranges.back().first;
+
+    return { w*2, h*2 };
+}
+
+void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D extent, std::vector<std::shared_ptr<DescriptorSet>> descriptorSets, std::vector<PushConstant> pushConstants, std::vector<Range> ranges) {
     std::vector<vk::DescriptorSet> descriptorSetHandles(descriptorSets.size());
     std::transform(descriptorSets.begin(), descriptorSets.end(), descriptorSetHandles.begin(), [](std::shared_ptr<DescriptorSet> x) { return x->handle; });
 

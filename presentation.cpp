@@ -1,7 +1,7 @@
 #include "presentation.hpp"
 
-#define WIDTH 500
-#define HEIGHT 500
+#define WIDTH 900
+#define HEIGHT 900
 
 Presentation::Presentation(std::shared_ptr<Setup> setup) : IHasSetup(setup), window(NULL) {}
 

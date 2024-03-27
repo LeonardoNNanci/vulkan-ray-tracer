@@ -9,6 +9,9 @@ layout(location = 0) rayPayloadEXT hitPayload prd;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set = 0, binding = 4) buffer _buff { float rgbBuffer[]; };
+layout(set = 0, binding = 5) buffer _buf1 { float albedoBuffer[]; };
+layout(set = 0, binding = 6) buffer _buf2 { float normalBuffer[]; };
+layout(set = 0, binding = 8) buffer _buff2 { Range foveatedRangeBuffer[];};
 
 layout(push_constant) uniform constants {
     mat4 proj;
@@ -17,64 +20,176 @@ layout(push_constant) uniform constants {
     mat4 viewInv;
 };
 
+int ratioCount = 3;
+
+struct Data {
+    ivec2 pixel;
+    int ratio;
+    int prevRadius;
+};
+
+// Data calcActualDistance(){
+//     ivec2 foveatedCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
+//     ivec2 imageCenter =  ivec2(900) / 2;
+//     ivec2 foveatedDisp = ivec2(gl_LaunchIDEXT.xy - foveatedCenter);
+//     float foveatedDistance = length(foveatedDisp);
+//     float initialDistance = foveatedDistance;
+//     Range r;
+//     float actualDistance;
+//     int prevRadius = 0;        
+
+//     for(int i = 0; i < ratioCount; i++){
+//         r = foveatedRangeBuffer[i];
+//         actualDistance = prevRadius + foveatedDistance * r.ratio;
+//         if(actualDistance <= prevRadius + r.radius)
+//             break;
+//         prevRadius += r.radius;
+//         foveatedDistance -= r.radius / r.ratio;
+//     }
+
+//     Data data;
+//     if(r.ratio == 1){
+//         data.pixel = imageCenter + foveatedDisp;
+//     }
+//     else{
+//         ivec2 actualDisp = ivec2(normalize(foveatedDisp) * actualDistance);
+//         actualDisp -= ivec2(r.ratio / 2);
+//         ivec2 pixel = imageCenter + actualDisp;
+//         data.pixel = pixel;
+//     }
+//     // if(pixel == ivec2(251, 249) || gl_LaunchIDEXT.xy == ivec2(350, 250) || gl_LaunchIDEXT.xy == ivec2(351, 250) || gl_LaunchIDEXT.xy == ivec2(383, 250) || gl_LaunchIDEXT.xy == ivec2(384, 250) || gl_LaunchIDEXT.xy == ivec2(394, 250) || gl_LaunchIDEXT.xy == ivec2(395, 250))
+//     //     debugPrintfEXT("Thread: %v2d | actualDistance: %f | ratio:%d | radius:%d | pixel:%v2d\n",  gl_LaunchIDEXT.xy, actualDistance, r.ratio, r.radius, pixel);
+
+//     data.ratio = r.ratio;
+//     data.prevRadius = prevRadius;
+
+//     return data;
+// }
+
 void main() 
 {
-    const ivec2 originalCenter = ivec2(gl_LaunchIDEXT.xy);
-    // const ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
-    // const float distance = length(originalCenter - imageCenter);
-    // const int k = 2;
-    // const float radii = 100.;
-    // const int exp = int(distance / radii);
-    // float ki = pow(float(k), float(exp));
-    //debugPrintfEXT("%f\n", ki);
+    // Data data = calcActualDistance();
+    // data.pixel = ivec2(gl_LaunchIDEXT.xy);
+    ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
+    if(pixel.x > 900 || pixel.y > 900 || pixel.x < 0 || pixel.y < 0)
+        return;
+    ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
 
-    //vec2 mod = vec2(originalCenter % int(ki));
-    vec2 pixelCenter = vec2(originalCenter);// - mod + ki*vec2(0.5);
-    // debugPrintfEXT("%v2i %% %d = %v2f\n", originalCenter, int(ki), mod);
-    
+    float dist = length(pixel - imageCenter);
+    float ratio;
+    for(int i = 0; i < ratioCount; i++){
+        Range r = foveatedRangeBuffer[i];
+        if(dist >= r.innerRadius && dist < r.outerRadius){
+            ratio = r.ratio;
+            break;
+        }
+        Range nextR = foveatedRangeBuffer[i+1];
+        if(dist >= r.outerRadius && dist < nextR.innerRadius){
+            ratio = (dist - r.outerRadius) / (nextR.innerRadius - r.outerRadius);
+            ratio *= (nextR.ratio - r.ratio);
+            ratio += r.ratio;
+            break;
+        }
+    }
 
-    //-----------------------------------------------------------
-    //const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
+    uint  rayFlags = gl_RayFlagsOpaqueEXT;
+    float tMin     = 0.00001;
+    float tMax     = 10000.0;
+
+    vec3 finalColor = vec3(0.);
+
+    vec2 inUV = (vec2(pixel) + vec2(0.5)) / vec2(gl_LaunchSizeEXT.xy);
     vec2 d = inUV * 2.0 - 1.0;
 
     vec4 origin    = viewInv * vec4(0, 0, 0, 1);
     vec4 target    = projInv * vec4(d.x, d.y, 1, 1);
     vec4 direction = viewInv * vec4(normalize(target.xyz), 0);
 
-    uint  rayFlags = gl_RayFlagsOpaqueEXT;
-    float tMin     = 0.00001;
-    float tMax     = 10000.0;
-
     prd.done = false;
+    prd.fillGuideLayers = true;
     prd.rayOrigin = origin.xyz;
     prd.rayDirection = direction.xyz;
     prd.hitValue = vec3(0.);
     prd.depth = 0;
-    vec3 finalColor = vec3(0.);
+    
+    traceRayEXT(topLevelAS, // acceleration structure
+        rayFlags,       // rayFlags
+        0xFF,           // cullMask
+        0,              // sbtRecordOffset
+        0,              // sbtRecordStride
+        0,              // missIndex
+        prd.rayOrigin,  // ray origin
+        tMin,           // ray min range
+        prd.rayDirection,  // ray direction
+        tMax,           // ray max range
+        0               // payload (location = 0)
+    );
+    prd.depth++;
+    prd.fillGuideLayers = false;
+    uint linear = pixel.y * 900 * 3 + pixel.x * 3;
 
-    uint maxDepth = 32;
-    while(prd.depth < maxDepth && !prd.done){
-        traceRayEXT(topLevelAS, // acceleration structure
-            rayFlags,       // rayFlags
-            0xFF,           // cullMask
-            0,              // sbtRecordOffset
-            0,              // sbtRecordStride
-            0,              // missIndex
-            prd.rayOrigin,  // ray origin
-            tMin,           // ray min range
-            prd.rayDirection,  // ray direction
-            tMax,           // ray max range
-            0               // payload (location = 0)
-        );
-        prd.depth++;
-        prd.rayDirection.z += .9;
+    albedoBuffer[linear] = prd.albedo.r;
+    albedoBuffer[linear + 1] = prd.albedo.g;
+    albedoBuffer[linear + 2] = prd.albedo.b;
+
+    normalBuffer[linear] = prd.normal.x;
+    normalBuffer[linear + 1] = prd.normal.y;
+    normalBuffer[linear + 2] = prd.normal.z;
+
+    rgbBuffer[linear] = 0.;
+    rgbBuffer[linear + 1] = 0.;
+    rgbBuffer[linear + 2] = 0.;
+
+    float p = rand(vec2(pixel) + prd.rayDirection.xy) / 2 + 0.5;
+
+    if(p > 1. / ratio)
+        return;
+
+    int maxDepth = 8;
+    int sampleCount = 8;
+    for(int i = 0; i < sampleCount; i++){
+        while(prd.depth < maxDepth && !prd.done){
+            traceRayEXT(topLevelAS, // acceleration structure
+                rayFlags,       // rayFlags
+                0xFF,           // cullMask
+                0,              // sbtRecordOffset
+                0,              // sbtRecordStride
+                0,              // missIndex
+                prd.rayOrigin,  // ray origin
+                tMin,           // ray min range
+                prd.rayDirection,  // ray direction
+                tMax,           // ray max range
+                0               // payload (location = 0)
+            );
+            prd.depth++;
+        }
+        
+        if(!prd.done)
+            prd.hitValue = vec3(0., 0., 0.);
+        finalColor += prd.hitValue;
+        prd.depth = 0;
+
+        if(sampleCount == sampleCount-1){
+            vec2 targetCoords = vec2(pixel) + rand3(i).xy / 2.;
+            inUV = targetCoords / vec2(gl_LaunchSizeEXT.xy);
+            d = inUV * 2.0 - 1.0;
+
+            origin    = viewInv * vec4(0, 0, 0, 1);
+            target    = projInv * vec4(d.x, d.y, 1, 1);
+            direction = viewInv * vec4(normalize(target.xyz), 0);
+
+            prd.done = false;
+            prd.rayOrigin = origin.xyz;
+            prd.rayDirection = direction.xyz;
+            prd.hitValue = vec3(0.);
+            prd.depth = 0;
+            prd.hitValue = vec3(0.);
+        }
     }
-    if(!prd.done)
-        prd.hitValue = vec3(0., 0., 0.);
-    uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT .x * 3 + gl_LaunchIDEXT.x * 3;
+    finalColor /= float(sampleCount);
 
-    rgbBuffer[linear] = prd.hitValue.r;
-    rgbBuffer[linear + 1] = prd.hitValue.g;
-    rgbBuffer[linear + 2] = prd.hitValue.b;
+    finalColor *= ratio;
+    rgbBuffer[linear] = finalColor.r;
+    rgbBuffer[linear + 1] = finalColor.g;
+    rgbBuffer[linear + 2] = finalColor.b;
 }

@@ -17,6 +17,7 @@ std::shared_ptr<BufferExternal> BufferExternalBuilder::buildExternal()
 	buffer->size = this->size;
 	buffer->commandBuffer = this->commandBuffer;
 	buffer->optixBuffer = this->optixBuffer;
+	buffer->hostVisible = (this->properties & vk::MemoryPropertyFlagBits::eHostVisible) == vk::MemoryPropertyFlagBits::eHostVisible;
 
 	return buffer;
 }

@@ -94,19 +94,18 @@ int main() {
 
 	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
 			.addModel(squareModel)
+			.addInstance(light)
+			.addInstance(ground)
+			.addInstance(left)
+			.addInstance(right)
+			.addInstance(back)
+			.addInstance(front)
 			.addModel(dragonModel)
+			.addInstance(dragon)
 			.build();
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
-			.addModel3D(squareModel)
-			.addModel3D(dragonModel)
-			.addInstance(light, 0)
-			.addInstance(ground, 0)
-			.addInstance(left, 0)
-			.addInstance(right, 0)
-			.addInstance(back, 0)
-			.addInstance(front, 0)
-			.addInstance(dragon, 1)
+			.setScene(scene)
 			.build();
 	auto denoiser = DenoiserBuilder(WIDTH, HEIGHT).build();
 
@@ -144,25 +143,31 @@ int main() {
 		.set = 0,
 		.binding = 4,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
+		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
 	Descriptor albedoDescriptor{
 		.set = 0,
 		.binding = 5,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
+		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
 	};
 	Descriptor normalDescriptor{
 		.set = 0,
 		.binding = 6,
 		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
+		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
 	};
 	Descriptor resultDescriptor{
 		.set = 0,
 		.binding = 7,
 		.type = vk::DescriptorType::eStorageBuffer,
 		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+	};
+	Descriptor foveatedRangesDescriptor {
+		.set = 0,
+		.binding = 8,
+		.type = vk::DescriptorType::eStorageBuffer,
+		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
 
 	auto sceneSet = DescriptorSetBuilder(setup)
@@ -191,7 +196,18 @@ int main() {
 		.addBinding(rgbDescriptor)
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
-		.addBinding(resultDescriptor);
+		.addBinding(resultDescriptor)
+		.addBinding(foveatedRangesDescriptor);
+
+	std::vector<Range> ranges = { {1, 0, 100}, {10, 500, 900} };
+	auto foveatedRangeBuffer = BufferBuilder(setup)
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostVisible)
+		.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+		.setSize(ranges.size() * sizeof(ranges))
+		.build();
+	foveatedRangeBuffer->fill(ranges);
+
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
@@ -205,6 +221,7 @@ int main() {
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
+		rayTracingSets[i]->updateDescriptor(foveatedRangesDescriptor, foveatedRangeBuffer);
 	}
 	
 
@@ -256,14 +273,14 @@ int main() {
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle += 30. * deltaTime;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(3.0f, 3.0f, 1.0f, 1.0f);
+		auto cameraPosition = glm::vec4(2.0f, 2.0f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
 		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
-		printf("\r%.2f", 1 / deltaTime);
+		printf("%.2f\n", 1 / deltaTime);
 		previousTime = currentTime;
 
 		auto& timelineTracker = timelineTrackers[iterationTracker];
@@ -307,11 +324,15 @@ int main() {
 		rayTracingBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eRayTracingShaderKHR, timelineTracker);
 		rayTracingBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		rayTracingBuffer->begin();
-		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet}, { pc });
+		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet}, { pc }, ranges);
 		rayTracingBuffer->submit();
 		rayTracingBuffer->waitFinished();
 
 		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
+		denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
+		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
+		//denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
+		//denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
 
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(renderFinishedSemaphore, vk::PipelineStageFlagBits::eAllCommands);

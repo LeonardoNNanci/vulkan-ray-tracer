@@ -30,6 +30,13 @@ SceneBuilder SceneBuilder::addModel(Model3D model)
     return *this;
 }
 
+SceneBuilder SceneBuilder::addInstance(Instance instance)
+{
+    instance.modelId = this->models.size() - 1;
+    this->instances.push_back(instance);
+    return *this;
+}
+
 std::shared_ptr<Scene> SceneBuilder::build()
 {
     std::vector<Vertex> vertices;
@@ -41,6 +48,8 @@ std::shared_ptr<Scene> SceneBuilder::build()
             .vertexStride = static_cast<uint32_t>(vertices.size()),
             .indexStride = static_cast<uint32_t>(indices.size())
         });
+        model.vertexOffset = vertices.size();
+        model.indexOffset = indices.size();
         vertices.insert(vertices.end(), model.vertices.begin(), model.vertices.end());
         indices.insert(indices.end(), model.indices.begin(), model.indices.end());
     }
@@ -49,12 +58,16 @@ std::shared_ptr<Scene> SceneBuilder::build()
         .setSize(vertices.size() * sizeof(vertices[0]))
         .setCommandBuffer(this->commandBuffer)
         .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .setUsage(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)
         .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
         .build();
     auto indexBuffer = BufferBuilder(this->setup)
         .setSize(indices.size() * sizeof(indices[0]))
         .setCommandBuffer(this->commandBuffer)
         .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eShaderDeviceAddress)
+        .setUsage(vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR)
         .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
         .build();
     auto descriptionBuffer = BufferBuilder(this->setup)
@@ -68,6 +81,8 @@ std::shared_ptr<Scene> SceneBuilder::build()
     descriptionBuffer->fill(objectDescriptions);
 
     auto scene = std::make_shared<Scene>();
+    scene->models = this->models;
+    scene->instances = this->instances;
     scene->vertexBuffer = vertexBuffer;
     scene->indexBuffer = indexBuffer;
     scene->objectDescriptionBuffer = descriptionBuffer;

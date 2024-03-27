@@ -42,6 +42,7 @@ std::shared_ptr<Buffer> BufferBuilder::build() {
 	buffer->memory = this->memory;
 	buffer->offset = this->offset;
 	buffer->size = this->size;
+	buffer->hostVisible = (this->properties & vk::MemoryPropertyFlagBits::eHostVisible) == vk::MemoryPropertyFlagBits::eHostVisible;
 	buffer->commandBuffer = this->commandBuffer;
 
 	return buffer;
@@ -114,19 +115,28 @@ template void Buffer::fill<Vertex>(std::vector<Vertex> data);
 template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
 template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
 template void Buffer::fill<ModelDescription>(std::vector<ModelDescription> data);
+template void Buffer::fill<std::pair<int, int>>(std::vector<std::pair<int, int>> data);
+template void Buffer::fill<Range>(std::vector<Range> data);
 
 template <typename T>
 void Buffer::fill(std::vector<T> data) {
-	auto stagingBuffer = BufferBuilder(this->setup)
-		.setSize(this->size)
-		.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
-		.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
-		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
-		.build();
+	if (this->hostVisible) {
+		void* pointer = this->setup->device.mapMemory(this->memory, this->offset, this->size, {});
+		memcpy(pointer, data.data(), (size_t)this->size);
+		this->setup->device.unmapMemory(this->memory);
+	}
+	else {
+		auto stagingBuffer = BufferBuilder(this->setup)
+			.setSize(this->size)
+			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
+			.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+			.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
+			.build();
 
-	void* pointer = this->setup->device.mapMemory(stagingBuffer->memory, stagingBuffer->offset, stagingBuffer->size, {});
-	memcpy(pointer, data.data(), (size_t)size);
-	this->setup->device.unmapMemory(stagingBuffer->memory);
+		void* pointer = this->setup->device.mapMemory(stagingBuffer->memory, stagingBuffer->offset, stagingBuffer->size, {});
+		memcpy(pointer, data.data(), (size_t)this->size);
+		this->setup->device.unmapMemory(stagingBuffer->memory);
 
-	this->copyBuffer(stagingBuffer);
+		this->copyBuffer(stagingBuffer);
+	}
 };

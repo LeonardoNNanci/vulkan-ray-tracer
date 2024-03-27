@@ -4,6 +4,12 @@
 #include "builder.hpp"
 #include "command_pool.hpp"
 
+struct Range {
+	float ratio;
+	float innerRadius;
+	float outerRadius;
+};
+
 class Buffer : private IHasSetup {
 public:
 	vk::Buffer handle;
@@ -11,6 +17,7 @@ public:
 	vk::DeviceSize offset = 0;
 	vk::DeviceSize size = 0;
 	std::shared_ptr<CommandBuffer> commandBuffer;
+	bool hostVisible;
 
 	Buffer(std::shared_ptr<Setup> setup);
 
