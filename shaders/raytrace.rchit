@@ -18,6 +18,16 @@ layout(push_constant) uniform constants {
     mat4 viewInv;
 };
 
+vec3 albedo[] = {
+    vec3(1.),
+    vec3(1.),
+    vec3(1.),
+    vec3(1.),
+    vec3(.5, 1., .5),
+    vec3(1., .5, .5),
+    vec3(0.9)
+};
+
 void main()
 {
     ModelDescription desc = modelDescription.o[gl_InstanceCustomIndexEXT];
@@ -52,7 +62,7 @@ void main()
 
             uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
 
-            prd.albedo = vec3(1.);
+            prd.albedo = albedo[gl_InstanceID % 7];
             prd.normal = cameraNormal;
         }
     }

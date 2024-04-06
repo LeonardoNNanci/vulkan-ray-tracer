@@ -79,7 +79,12 @@ vk::Device SetupBuilder::createDevice()
         .pQueuePriorities = priorities
     };
 
+    vk::PhysicalDeviceHostQueryResetFeatures queryPoolFeatures{
+        .hostQueryReset = vk::True
+    };
+
     vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures{
+        .pNext = &queryPoolFeatures,
         .timelineSemaphore = vk::True
     };
     vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{

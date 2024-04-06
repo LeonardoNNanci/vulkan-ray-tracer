@@ -19,6 +19,18 @@ void optixLogCallback(unsigned int level, const char* tag, const char* message, 
 
 DenoiserBuilder::DenoiserBuilder(uint width, uint height) : width(width), height(height) {}
 
+DenoiserBuilder DenoiserBuilder::setGuideAlbedo()
+{
+	this->guideAlbedo = true;
+	return *this;
+}
+
+DenoiserBuilder DenoiserBuilder::setGuideNormal()
+{
+	this->guideNormal = true;
+	return *this;
+}
+
 std::shared_ptr<Denoiser> DenoiserBuilder::build()
 {
 	this->context = this->createContext();
@@ -71,8 +83,8 @@ OptixDenoiser DenoiserBuilder::createDenoiser() {
 	auto kind = OPTIX_DENOISER_MODEL_KIND_LDR;
 	
 	OptixDenoiserOptions options{
-		.guideAlbedo = true,
-		.guideNormal = true,
+		.guideAlbedo = this->guideAlbedo,
+		.guideNormal = this->guideNormal,
 		.denoiseAlpha = OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE
 	};
 	OptixDenoiser denoiser = nullptr;
@@ -105,13 +117,13 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 	sizes(sizes)
 {}
 
-void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer)
+void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap)
 {
 	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
 	//cudaDeviceSynchronize();
 	try {
 		OptixDenoiserParams params = {
-			.blendFactor = 0.5
+			.blendFactor = 0.
 		};
 	
 		OptixDenoiserGuideLayer guideLayer{
@@ -152,6 +164,7 @@ void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdevicept
 			},
 		};
 		int num_layers = 1;
+		
 		optixDenoiserInvoke(this->handle, 0, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, num_layers, 0, 0, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
 		cudaDeviceSynchronize();
 	}
@@ -159,6 +172,12 @@ void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdevicept
 	{
 		std::cout << e.what() << std::endl;
 	}
+}
+
+
+void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap)
+{
+	this->run(inputBuffer, albedoBuffer, NULL, bottomLeft, overlap);
 }
 
 Denoiser::~Denoiser()

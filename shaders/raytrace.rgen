@@ -145,8 +145,8 @@ void main()
     if(p > 1. / ratio)
         return;
 
-    int maxDepth = 8;
-    int sampleCount = 8;
+    int maxDepth = 32;
+    int sampleCount = 32;
     for(int i = 0; i < sampleCount; i++){
         while(prd.depth < maxDepth && !prd.done){
             traceRayEXT(topLevelAS, // acceleration structure

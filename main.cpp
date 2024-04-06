@@ -81,6 +81,15 @@ int main() {
 	auto presentation = PresentationBuilder(setup).build();
 	auto commandPool = CommandPoolBuilder(setup).build();
 
+	auto deviceLimits = setup->physicalDevice.getProperties().limits;
+
+	vk::QueryPoolCreateInfo queryPoolInfo{
+		.queryType = vk::QueryType::eTimestamp,
+		.queryCount = 10
+	};
+	auto queryPool = setup->device.createQueryPool(queryPoolInfo);
+
+
 	auto WIDTH = presentation->swapchain.extent.width;
 	auto HEIGHT = presentation->swapchain.extent.height;
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
@@ -107,7 +116,13 @@ int main() {
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
 			.build();
-	auto denoiser = DenoiserBuilder(WIDTH, HEIGHT).build();
+	auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.setGuideNormal()
+		.build();
+	auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.build();
 
 	Descriptor bvhDescriptor{
 		.set = 0,
@@ -199,7 +214,7 @@ int main() {
 		.addBinding(resultDescriptor)
 		.addBinding(foveatedRangesDescriptor);
 
-	std::vector<Range> ranges = { {1, 0, 100}, {10, 500, 900} };
+	std::vector<Range> ranges = { {1, 0, 100}, {10, 300, 1000} };
 	auto foveatedRangeBuffer = BufferBuilder(setup)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostVisible)
@@ -273,14 +288,14 @@ int main() {
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle += 30. * deltaTime;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(2.0f, 2.0f, 1.0f, 1.0f);
+		auto cameraPosition = glm::vec4(3.0f, 3.0f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
 		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
-		printf("%.2f\n", 1 / deltaTime);
+		//printf("%.2f\n", 1 / deltaTime);
 		previousTime = currentTime;
 
 		auto& timelineTracker = timelineTrackers[iterationTracker];
@@ -314,6 +329,7 @@ int main() {
 		layoutChangeBuffer->addWaitSemaphore(imageReadySemaphore, vk::PipelineStageFlagBits::eAllCommands);
 		layoutChangeBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		layoutChangeBuffer->begin();
+		layoutChangeBuffer->handle.resetQueryPool(queryPool, 0, 10);
 		currentImage->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
 		layoutChangeBuffer->submit();
 		layoutChangeBuffer->waitFinished();
@@ -324,13 +340,15 @@ int main() {
 		rayTracingBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eRayTracingShaderKHR, timelineTracker);
 		rayTracingBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		rayTracingBuffer->begin();
+		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, 0);
 		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet}, { pc }, ranges);
+		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, 1);
 		rayTracingBuffer->submit();
 		rayTracingBuffer->waitFinished();
 
-		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
-		denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
-		denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
+		fullDenoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, glm::ivec2(350), 50);
+		//denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
+		//denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
 		//denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
 		//denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
 
@@ -341,6 +359,7 @@ int main() {
 		arrayToImgBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, bufferToImage->layout, 0, { rayTracingSet->handle }, { 0 });
 		arrayToImgBuffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
 		currentImage->presentBarrier(arrayToImgBuffer);
+		//arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, 9);
 		arrayToImgBuffer->submit();
 		
 		std::vector<vk::SwapchainKHR> swapchains = { presentation->swapchain.handle };
@@ -350,6 +369,10 @@ int main() {
 		presentInfo.setImageIndices(imageIndices);
 		presentInfo.setWaitSemaphores(renderFinishedSemaphore->handle);
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
+
+		auto timestamps = setup->device.getQueryPoolResults<uint64_t>(queryPool, 0, 2, 2*sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::e64).value;
+		float rtTime = float(timestamps[1] - timestamps[0]) * deviceLimits.timestampPeriod / 1000000.0f;
+		printf("%f\n", rtTime);
 	}
 	printf("\n");
 	setup->device.waitIdle();

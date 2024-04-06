@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <optix.h>
+#include <glm/glm.hpp>
 
 #include "builder.hpp"
 
@@ -11,7 +12,9 @@ class Denoiser {
 public:
 	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes);
 
-	void run(CUdeviceptr lightBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer);
+	void run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap);
+
+	void run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap);
 
 	~Denoiser();
 
@@ -34,6 +37,10 @@ class DenoiserBuilder : public Builder <std::shared_ptr< Denoiser >> {
 public:
 	DenoiserBuilder(uint width, uint height);
 
+	DenoiserBuilder setGuideAlbedo();
+
+	DenoiserBuilder setGuideNormal();
+
 	std::shared_ptr<Denoiser> build();
 
 private:
@@ -45,6 +52,8 @@ private:
 	CUdeviceptr denoiserBuffer = NULL;
 	CUdeviceptr scratchBuffer = NULL;
 	OptixDenoiserSizes sizes = { 0, 0, 0, 0, 0, 0, 0 };
+	bool guideAlbedo = false;
+	bool guideNormal = false;
 
 	OptixDeviceContext createContext();
 

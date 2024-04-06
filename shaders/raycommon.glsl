@@ -36,7 +36,7 @@ float rand(vec2 co){
 }
 
 vec3 rand3(float seed) {
-    float x = rand(vec2(seed));
+    float x = rand(vec2(seed, seed*seed));
     float y = rand(vec2(x));
     float z = rand(vec2(y));
     return vec3(x, y, z);

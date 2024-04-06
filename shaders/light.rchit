@@ -21,9 +21,6 @@ layout(push_constant) uniform constants {
 
 void main()
 {   
-    prd.done = true;
-    prd.hitValue = vec3(1.) * pow(0.75, prd.depth);
-
     ModelDescription desc = modelDescription.o[gl_InstanceCustomIndexEXT];
 	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
 	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
@@ -44,4 +41,7 @@ void main()
         prd.albedo = vec3(1.);
         prd.normal = cameraNormal;
     }
+    prd.done = true;
+    prd.hitValue = prd.albedo * pow(0.75, prd.depth);
+
 }
