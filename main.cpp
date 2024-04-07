@@ -92,6 +92,27 @@ int main() {
 
 	auto WIDTH = presentation->swapchain.extent.width;
 	auto HEIGHT = presentation->swapchain.extent.height;
+
+
+
+	std::vector<Range> ranges = { {1, 0, 100}, {10, 300, 1000} };
+	std::vector<std::pair<glm::ivec2, glm::ivec2>> outerTiles = {
+		{{0, 0}, {350, HEIGHT}},
+		{{350, 0}, {550, 350}},
+		{{350, 550}, {550, HEIGHT}},
+		{{550, 0}, {WIDTH, HEIGHT}}
+	};
+	std::vector<std::pair<glm::ivec2, glm::ivec2>> centerTile = { { {350, 350}, { 550, 550 }} };
+	//std::vector<std::pair<glm::ivec2, glm::ivec2>> midTiles = {
+	//	{{212, 212}, {350, HEIGHT- 212}},
+	//	{{350, 212}, {550, 350}},
+	//	{{350, 550}, {550, HEIGHT- 212}},
+	//	{{550, 212}, {WIDTH- 212, HEIGHT- 212}}
+	//};
+	std::vector<std::pair<glm::ivec2, glm::ivec2>> fullImage = { { {0, 0}, { WIDTH, HEIGHT }} };
+
+
+
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
 	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
@@ -204,6 +225,7 @@ int main() {
 	std::shared_ptr<BufferExternal> inputBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> albedoBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> normalBuffers[FRAMES_IN_FLIGHT];
+	std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> resultBuffers[FRAMES_IN_FLIGHT];
 	auto rayTracingSetBuilder = DescriptorSetBuilder(setup)
 		.addBinding(bvhDescriptor)
@@ -214,7 +236,6 @@ int main() {
 		.addBinding(resultDescriptor)
 		.addBinding(foveatedRangesDescriptor);
 
-	std::vector<Range> ranges = { {1, 0, 100}, {10, 300, 1000} };
 	auto foveatedRangeBuffer = BufferBuilder(setup)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostVisible)
@@ -227,6 +248,7 @@ int main() {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
 		normalBuffers[i] = imageArrayBuilder.buildExternal();
+		partialResultBuffers[i] = imageArrayBuilder.buildExternal();
 		resultBuffers[i] = imageArrayBuilder.buildExternal();
 
 		rayTracingSets[i] = rayTracingSetBuilder.build();
@@ -283,6 +305,7 @@ int main() {
 
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
+
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
@@ -312,6 +335,7 @@ int main() {
 		auto& inputBuffer = inputBuffers[iterationTracker];
 		auto& albedoBuffer = albedoBuffers[iterationTracker];
 		auto& normalBuffer = normalBuffers[iterationTracker];
+		auto& partialResultBuffer = partialResultBuffers[iterationTracker];
 		auto& resultBuffer = resultBuffers[iterationTracker];
 
 		iterationTracker = (iterationTracker + 1) % FRAMES_IN_FLIGHT;
@@ -346,11 +370,12 @@ int main() {
 		rayTracingBuffer->submit();
 		rayTracingBuffer->waitFinished();
 
-		fullDenoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, glm::ivec2(350), 50);
-		//denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
-		//denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
-		//denoiser->run(resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, inputBuffer->optixBuffer);
-		//denoiser->run(inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer);
+		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		partialDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
+		fullDenoiser->synchronize();
+		partialDenoiser->synchronize();
+		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->synchronize();
 
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(renderFinishedSemaphore, vk::PipelineStageFlagBits::eAllCommands);

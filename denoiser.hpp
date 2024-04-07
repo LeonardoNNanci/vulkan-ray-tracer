@@ -1,7 +1,9 @@
 #pragma once
 #include <memory>
+#include <vector>
 
 #include <optix.h>
+
 #include <glm/glm.hpp>
 
 #include "builder.hpp"
@@ -12,9 +14,11 @@ class Denoiser {
 public:
 	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes);
 
-	void run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap);
+	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
 
-	void run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap);
+	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
+
+	void synchronize();
 
 	~Denoiser();
 

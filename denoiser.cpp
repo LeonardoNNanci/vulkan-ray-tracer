@@ -5,12 +5,11 @@
 #include <stdexcept>
 #include <optix.h>
 #include <optix_function_table_definition.h>
+#include <optix_denoiser_tiling.h>
 #include <optix_stubs.h>
 #include <cuda_runtime_api.h>
 
-uint32_t sizeof_light_pixel = static_cast<uint32_t>(3 * sizeof(float));
-uint32_t sizeof_albedo_pixel = static_cast<uint32_t>(3 * sizeof(float));
-uint32_t sizeof_normal_pixel = static_cast<uint32_t>(3 * sizeof(float));
+uint32_t sizeof_pixel = static_cast<uint32_t>(3 * sizeof(float));
 
 void optixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
@@ -99,11 +98,10 @@ void DenoiserBuilder::setupDenoiser() {
 	optixDenoiserComputeMemoryResources(this->handle, (uint)this->width, (uint)this->height, &this->sizes);
 
 	cudaMalloc(reinterpret_cast<void**>(&this->denoiserBuffer), this->sizes.stateSizeInBytes);
-	cudaMalloc(reinterpret_cast<void**>(&this->scratchBuffer), this->sizes.withoutOverlapScratchSizeInBytes);
+	cudaMalloc(reinterpret_cast<void**>(&this->scratchBuffer), this->sizes.withOverlapScratchSizeInBytes);
 
 	cudaDeviceSynchronize();
-	// using default stream 0
-	optixDenoiserSetup(this->handle, 0, this->width, this->height, this->denoiserBuffer, this->sizes.stateSizeInBytes, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
+	optixDenoiserSetup(this->handle, this->stream, this->width, this->height, this->denoiserBuffer, this->sizes.stateSizeInBytes, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
 }
 
 Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes) :
@@ -117,56 +115,76 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 	sizes(sizes)
 {}
 
-void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap)
+
+std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ivec2, glm::ivec2>> extremes, int overlap, size_t WIDTH, size_t HEIGHT)
 {
-	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, width * height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
-	//cudaDeviceSynchronize();
+	std::vector<OptixUtilDenoiserImageTile> tiles;
+	size_t rowStrideInBytes = WIDTH * sizeof_pixel;
+
+	for (auto [p1, p2] : extremes) {
+		glm::ivec2 outputBottomLeft = { min(p1.x, p2.x), min(p1.y, p2.y) };
+		glm::ivec2 outputTopRight = { max(p1.x, p2.x), max(p1.y, p2.y) };
+
+		glm::ivec2 inputBottomLeft = outputBottomLeft - glm::ivec2(overlap);
+		inputBottomLeft.x = max(inputBottomLeft.x, 0);
+		inputBottomLeft.y = max(inputBottomLeft.y, 0);
+
+		glm::ivec2 inputTopRight = outputTopRight + glm::ivec2(overlap);
+		inputTopRight.x = min(inputTopRight.x, WIDTH);
+		inputTopRight.y = min(inputTopRight.y, HEIGHT);
+
+		OptixUtilDenoiserImageTile tile;
+		tile.input.data = (size_t)(inputBottomLeft.y * rowStrideInBytes) + (size_t)(inputBottomLeft.x * sizeof_pixel);
+		tile.input.width = inputTopRight.x - inputBottomLeft.x;
+		tile.input.height = inputTopRight.y - inputBottomLeft.y;
+		tile.input.pixelStrideInBytes = sizeof_pixel;
+		tile.input.rowStrideInBytes = rowStrideInBytes;
+		tile.input.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3;
+
+		tile.output.data = (size_t)(outputBottomLeft.y * rowStrideInBytes) + (size_t)(outputBottomLeft.x * sizeof_pixel);
+		tile.output.width = outputTopRight.x - outputBottomLeft.x;
+		tile.output.height = outputTopRight.y - outputBottomLeft.y;
+		tile.output.pixelStrideInBytes = sizeof_pixel;
+		tile.output.rowStrideInBytes = rowStrideInBytes;
+		tile.output.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3;
+
+		tile.inputOffsetX = outputBottomLeft.x - inputBottomLeft.x;
+		tile.inputOffsetY = outputBottomLeft.y - inputBottomLeft.y;
+
+		tiles.push_back(tile);
+	}
+
+	return tiles;
+}
+
+void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
+{
 	try {
 		OptixDenoiserParams params = {
-			.blendFactor = 0.
+			.blendFactor = blendFactor
 		};
-	
-		OptixDenoiserGuideLayer guideLayer{
-			.albedo = {
-				.data = albedoBuffer,
-				.width = this->width,
-				.height = this->height,
-				.rowStrideInBytes = this->width * sizeof_light_pixel,
-				.pixelStrideInBytes = sizeof_light_pixel,
-				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			},
-			.normal = {
-				.data = normalBuffer,
-				.width = this->width,
-				.height = this->height,
-				.rowStrideInBytes = this->width * sizeof_light_pixel,
-				.pixelStrideInBytes = sizeof_light_pixel,
-				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			},
-		};
-	
-		OptixDenoiserLayer layers{
-			.input = {
-				.data = inputBuffer,
-				.width = this->width,
-				.height = this->height,
-				.rowStrideInBytes = sizeof_light_pixel * this->width,
-				.pixelStrideInBytes = sizeof_light_pixel,
-				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			},
-			.output = {
-				.data = outputBuffer,
-				.width = this->width,
-				.height = this->height,
-				.rowStrideInBytes = sizeof_light_pixel * this->width,
-				.pixelStrideInBytes = sizeof_light_pixel,
-				.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3
-			},
-		};
-		int num_layers = 1;
+
+		auto tiles = calcTiles(tileDescriptions, 200, this->width, this->height);
+
+		for (int i = 0; i < tiles.size(); i++) {
+			OptixDenoiserGuideLayer guideLayer{
+				.albedo = tiles[i].input,
+				.normal = tiles[i].input
+			};
+
+			OptixDenoiserLayer layers{
+				.input = tiles[i].input,
+				.output = tiles[i].output
+			};
+
+			guideLayer.albedo.data += albedoBuffer;
+			guideLayer.normal.data += normalBuffer;
+			layers.input.data += inputBuffer;
+			layers.output.data += outputBuffer;
+
+			optixDenoiserInvoke(this->handle, this->stream, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, 1, tiles[i].inputOffsetX, tiles[i].inputOffsetY, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
+		}
 		
-		optixDenoiserInvoke(this->handle, 0, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, num_layers, 0, 0, this->scratchBuffer, this->sizes.withoutOverlapScratchSizeInBytes);
-		cudaDeviceSynchronize();
 	}
 	catch (const std::exception& e)
 	{
@@ -175,9 +193,14 @@ void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdevicept
 }
 
 
-void Denoiser::run(CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, glm::ivec2 bottomLeft, int overlap)
+void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
 {
-	this->run(inputBuffer, albedoBuffer, NULL, bottomLeft, overlap);
+	this->run(blendFactor, inputBuffer, albedoBuffer, NULL, outputBuffer, tileDescriptions);
+}
+
+void Denoiser::synchronize()
+{
+	cudaStreamSynchronize(this->stream);
 }
 
 Denoiser::~Denoiser()
@@ -187,4 +210,3 @@ Denoiser::~Denoiser()
 	optixDenoiserDestroy(this->handle);
 	optixDeviceContextDestroy(this->context);
 }
-
