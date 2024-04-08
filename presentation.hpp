@@ -35,7 +35,7 @@ public:
 
 class PresentationBuilder : public Builder<std::shared_ptr<Presentation>>, private IHasSetup {
 public:
-	PresentationBuilder(std::shared_ptr<Setup> setup);
+	PresentationBuilder(std::shared_ptr<Setup> setup, unsigned int width, unsigned int height);
 
 	static Requirements getRequirements();
 
@@ -43,6 +43,10 @@ public:
 
 private:
 	std::shared_ptr<Presentation> presentation;
+
+	unsigned int width;
+
+	unsigned int height;
 
 	GLFWwindow* createWindow();
 

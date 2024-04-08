@@ -12,6 +12,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
+#define WIDTH 900
+#define HEIGHT 900
 
 #define FRAMES_IN_FLIGHT 3
 uint64_t timelineTrackers[] = { 3, 6, 9 };
@@ -27,6 +29,22 @@ Model3D squareModel {
 		2, 0, 1, //floor
 		3, 2, 1}
 };
+
+std::vector<Range> ranges = { {1, 0, 142}, {5, 350, 1000} };
+std::vector<std::pair<glm::ivec2, glm::ivec2>> outerTiles = {
+	{{0, 0}, {350, HEIGHT}},
+	{{350, 0}, {550, 350}},
+	{{350, 550}, {550, HEIGHT}},
+	{{550, 0}, {WIDTH, HEIGHT}}
+};
+std::vector<std::pair<glm::ivec2, glm::ivec2>> centerTile = { { {350, 350}, { 550, 550 }} };
+//std::vector<std::pair<glm::ivec2, glm::ivec2>> midTiles = {
+//	{{212, 212}, {350, HEIGHT- 212}},
+//	{{350, 212}, {550, 350}},
+//	{{350, 550}, {550, HEIGHT- 212}},
+//	{{550, 212}, {WIDTH- 212, HEIGHT- 212}}
+//};
+std::vector<std::pair<glm::ivec2, glm::ivec2>> fullImage = { { {0, 0}, { WIDTH, HEIGHT }} };
 
 std::shared_ptr<Pipeline> createComputePipeline(std::shared_ptr<Setup> setup, const char* shaderFile,
 	std::vector<vk::DescriptorSetLayout> pipelineDescriptorSetLayouts,
@@ -78,7 +96,7 @@ int main() {
 		.addExtensions(DescriptorSetBuilder::getRequirements())
 		.addExtensions(PipelineBuilder::getRequirements())
 		.build();
-	auto presentation = PresentationBuilder(setup).build();
+	auto presentation = PresentationBuilder(setup, WIDTH, HEIGHT).build();
 	auto commandPool = CommandPoolBuilder(setup).build();
 
 	auto deviceLimits = setup->physicalDevice.getProperties().limits;
@@ -88,30 +106,6 @@ int main() {
 		.queryCount = 10
 	};
 	auto queryPool = setup->device.createQueryPool(queryPoolInfo);
-
-
-	auto WIDTH = presentation->swapchain.extent.width;
-	auto HEIGHT = presentation->swapchain.extent.height;
-
-
-
-	std::vector<Range> ranges = { {1, 0, 100}, {10, 300, 1000} };
-	std::vector<std::pair<glm::ivec2, glm::ivec2>> outerTiles = {
-		{{0, 0}, {350, HEIGHT}},
-		{{350, 0}, {550, 350}},
-		{{350, 550}, {550, HEIGHT}},
-		{{550, 0}, {WIDTH, HEIGHT}}
-	};
-	std::vector<std::pair<glm::ivec2, glm::ivec2>> centerTile = { { {350, 350}, { 550, 550 }} };
-	//std::vector<std::pair<glm::ivec2, glm::ivec2>> midTiles = {
-	//	{{212, 212}, {350, HEIGHT- 212}},
-	//	{{350, 212}, {550, 350}},
-	//	{{350, 550}, {550, HEIGHT- 212}},
-	//	{{550, 212}, {WIDTH- 212, HEIGHT- 212}}
-	//};
-	std::vector<std::pair<glm::ivec2, glm::ivec2>> fullImage = { { {0, 0}, { WIDTH, HEIGHT }} };
-
-
 
 	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
@@ -311,7 +305,7 @@ int main() {
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle += 30. * deltaTime;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(3.0f, 3.0f, 1.0f, 1.0f);
+		auto cameraPosition = glm::vec4(2.0f, 2.0f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
 		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
@@ -370,11 +364,11 @@ int main() {
 		rayTracingBuffer->submit();
 		rayTracingBuffer->waitFinished();
 
-		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
-		partialDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
+		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
+		partialDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, outerTiles);
 		fullDenoiser->synchronize();
 		partialDenoiser->synchronize();
-		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 		fullDenoiser->synchronize();
 
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);

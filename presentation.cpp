@@ -1,8 +1,5 @@
 #include "presentation.hpp"
 
-#define WIDTH 900
-#define HEIGHT 900
-
 Presentation::Presentation(std::shared_ptr<Setup> setup) : IHasSetup(setup), window(NULL) {}
 
 bool Presentation::windowIsOpen()
@@ -19,7 +16,7 @@ Presentation::~Presentation()
     glfwTerminate();
 }
 
-PresentationBuilder::PresentationBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
+PresentationBuilder::PresentationBuilder(std::shared_ptr<Setup> setup, unsigned int width, unsigned int height) : IHasSetup(setup), width(width), height(height) {}
 
 Requirements PresentationBuilder::getRequirements()
 {	
@@ -57,7 +54,7 @@ std::shared_ptr<Presentation> PresentationBuilder::build()
 GLFWwindow* PresentationBuilder::createWindow()
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	return glfwCreateWindow(WIDTH, HEIGHT, "Vulkan window", nullptr, nullptr);
+	return glfwCreateWindow(this->width, this->height, "Vulkan window", nullptr, nullptr);
 }
 
 vk::SurfaceKHR PresentationBuilder::createSurface()
@@ -112,8 +109,8 @@ std::vector<std::shared_ptr<Image>> PresentationBuilder::createDenoiserImages(in
             .imageType = vk::ImageType::e2D,
             .format = vk::Format::eR8G8B8A8Unorm,
             .extent = {
-                .width = WIDTH,
-                .height = HEIGHT,
+                .width = this->width,
+                .height = this->height,
                 .depth = 1,
             },
             .mipLevels = 1,
@@ -131,7 +128,7 @@ std::vector<std::shared_ptr<Image>> PresentationBuilder::createDenoiserImages(in
         auto handle = this->setup->device.createImage(imageInfo);
         auto memory = this->createMemory(handle);
         this->setup->device.bindImageMemory(handle, memory, 0);
-        images[i] = std::make_shared<Image>(this->setup, handle, vk::Format::eR8G8B8A8Unorm, WIDTH, HEIGHT, memory);
+        images[i] = std::make_shared<Image>(this->setup, handle, vk::Format::eR8G8B8A8Unorm, this->width, this->height, memory);
     }
     return images;
 }
@@ -146,7 +143,7 @@ std::vector<std::shared_ptr<Image>> PresentationBuilder::createImages()
     images.resize(nImages);
     
     for (int i = 0; i < nImages; i++) {
-        images[i] = std::make_shared<Image>(this->setup, scImages[i], this->presentation->swapchain.format, WIDTH, HEIGHT);
+        images[i] = std::make_shared<Image>(this->setup, scImages[i], this->presentation->swapchain.format, this->width, this->height);
     }
 
     return images;
