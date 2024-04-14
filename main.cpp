@@ -12,12 +12,51 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
-#define WIDTH 900
-#define HEIGHT 900
+#define WIDTH 1920
+#define HEIGHT 1080
+#define INNER_RADIUS 150
+#define OUTER_RADIUS 400
+
+glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
 #define FRAMES_IN_FLIGHT 3
 uint64_t timelineTrackers[] = { 3, 6, 9 };
 int iterationTracker = 0;
+
+float calcHalfTileSize(float radius, bool circumscribed) {
+	if (circumscribed)
+		return radius;
+	return radius / sqrt(2.);
+}
+
+std::vector<std::pair<glm::ivec2, glm::ivec2>> calcTile(float outerRadius, bool circumscribed) {
+	auto halfSize = calcHalfTileSize(outerRadius, circumscribed);
+	glm::ivec2 disp(halfSize);
+
+	auto bottomLeft = gazePoint - disp;
+	auto topRight = gazePoint + disp;
+
+	bottomLeft.x = std::clamp(bottomLeft.x, 0, WIDTH);
+	bottomLeft.y = std::clamp(bottomLeft.y, 0, HEIGHT);
+	topRight.x = std::clamp(topRight.x, 0, WIDTH);
+	topRight.y = std::clamp(topRight.y, 0, HEIGHT);
+
+	return {
+		{bottomLeft, topRight}
+	};
+}
+
+std::vector<std::pair<glm::ivec2, glm::ivec2>> calcTiles(float innerRadius, float outerRadius) {
+	auto centerTile = calcTile(innerRadius, false)[0];
+	auto outerTile = calcTile(outerRadius, true)[0];
+
+	return {
+		{ {outerTile.first.x, outerTile.first.y}, {centerTile.first.x, outerTile.second.y}},
+		{ {centerTile.second.x, outerTile.first.y}, {outerTile.second.x, outerTile.second.y} },
+		{ {centerTile.first.x, outerTile.first.y}, {centerTile.second.x, centerTile.first.y} },
+		{ {centerTile.first.x, centerTile.second.y}, {centerTile.second.x, outerTile.second.y} }
+	};
+}
 
 Model3D squareModel {
 	.vertices = {
@@ -30,21 +69,7 @@ Model3D squareModel {
 		3, 2, 1}
 };
 
-std::vector<Range> ranges = { {1, 0, 142}, {5, 350, 1000} };
-std::vector<std::pair<glm::ivec2, glm::ivec2>> outerTiles = {
-	{{0, 0}, {350, HEIGHT}},
-	{{350, 0}, {550, 350}},
-	{{350, 550}, {550, HEIGHT}},
-	{{550, 0}, {WIDTH, HEIGHT}}
-};
-std::vector<std::pair<glm::ivec2, glm::ivec2>> centerTile = { { {350, 350}, { 550, 550 }} };
-//std::vector<std::pair<glm::ivec2, glm::ivec2>> midTiles = {
-//	{{212, 212}, {350, HEIGHT- 212}},
-//	{{350, 212}, {550, 350}},
-//	{{350, 550}, {550, HEIGHT- 212}},
-//	{{550, 212}, {WIDTH- 212, HEIGHT- 212}}
-//};
-std::vector<std::pair<glm::ivec2, glm::ivec2>> fullImage = { { {0, 0}, { WIDTH, HEIGHT }} };
+std::vector<Range> ranges = { {1, 0, INNER_RADIUS}, {10, OUTER_RADIUS, WIDTH} };
 
 std::shared_ptr<Pipeline> createComputePipeline(std::shared_ptr<Setup> setup, const char* shaderFile,
 	std::vector<vk::DescriptorSetLayout> pipelineDescriptorSetLayouts,
@@ -364,11 +389,14 @@ int main() {
 		rayTracingBuffer->submit();
 		rayTracingBuffer->waitFinished();
 
-		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
-		partialDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, outerTiles);
+		auto centerTile = calcTile(INNER_RADIUS, false);
+		auto outerTiles = calcTiles(INNER_RADIUS, WIDTH / 2);
+		auto fullImage = calcTile(WIDTH / 2, true);
+		fullDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		partialDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
 		fullDenoiser->synchronize();
 		partialDenoiser->synchronize();
-		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 		fullDenoiser->synchronize();
 
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
