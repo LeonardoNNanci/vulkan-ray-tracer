@@ -115,6 +115,13 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 	sizes(sizes)
 {}
 
+void Denoiser::setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal)
+{
+	this->semaphore = semaphore;
+	this->waitSignal = waitSignal;
+	this->signalSignal = signalSignal;
+}
+
 
 std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ivec2, glm::ivec2>> extremes, int overlap, size_t WIDTH, size_t HEIGHT)
 {
@@ -159,6 +166,11 @@ std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ive
 
 void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
 {
+	cudaExternalSemaphoreWaitParams waitParams{	};
+	waitParams.params.fence.value = this->waitSignal;
+	if (cudaWaitExternalSemaphoresAsync(&this->semaphore, &waitParams, 1, this->stream) != CUDA_SUCCESS)
+		throw std::runtime_error("Failed to sync cuda-vulkan\n");
+
 	try {
 		OptixDenoiserParams params = {
 			.blendFactor = blendFactor
@@ -190,6 +202,11 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 	{
 		std::cout << e.what() << std::endl;
 	}
+
+	cudaExternalSemaphoreSignalParams signalParams{};
+	signalParams.params.fence.value = this->signalSignal;
+	if(cudaSignalExternalSemaphoresAsync(&this->semaphore, &signalParams, 1, this->stream) != CUDA_SUCCESS)
+		throw std::runtime_error("Failed to sync cuda-vulkan\n");
 }
 
 
@@ -198,7 +215,7 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 	this->run(blendFactor, inputBuffer, albedoBuffer, NULL, outputBuffer, tileDescriptions);
 }
 
-void Denoiser::synchronize()
+void Denoiser::hardSynchronize()
 {
 	cudaStreamSynchronize(this->stream);
 }

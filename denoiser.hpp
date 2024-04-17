@@ -3,8 +3,10 @@
 #include <vector>
 
 #include <optix.h>
+#include <cuda_runtime_api.h>
 
 #include <glm/glm.hpp>
+
 
 #include "builder.hpp"
 
@@ -14,11 +16,13 @@ class Denoiser {
 public:
 	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes);
 
+	void setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal);
+
 	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
 
 	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
 
-	void synchronize();
+	void hardSynchronize();
 
 	~Denoiser();
 
@@ -35,6 +39,10 @@ private:
 
 	CUdeviceptr denoiserBuffer;
 	CUdeviceptr scratchBuffer;
+
+	cudaExternalSemaphore_t semaphore;
+	uint64_t waitSignal;
+	uint64_t signalSignal;
 };
 
 class DenoiserBuilder : public Builder <std::shared_ptr< Denoiser >> {

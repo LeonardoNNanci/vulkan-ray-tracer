@@ -159,6 +159,7 @@ void Semaphore::waitSignaled(uint64_t value) {
 }
 
 Semaphore::~Semaphore() {
+	cudaFree((void*)this->cuda);
 	this->setup->device.destroySemaphore(this->handle);
 }
 
