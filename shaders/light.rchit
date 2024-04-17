@@ -41,7 +41,5 @@ void main()
         prd.albedo = vec3(1.);
         prd.normal = cameraNormal;
     }
-    prd.done = true;
-    prd.hitValue = prd.albedo * pow(0.75, prd.depth);
-
+    prd.hitValue = vec3(1.);
 }

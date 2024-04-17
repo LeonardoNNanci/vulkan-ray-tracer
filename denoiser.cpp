@@ -159,6 +159,8 @@ std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ive
 
 void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
 {
+	//cudaMemcpy((void*)outputBuffer, (void*)normalBuffer, this->width * this->height * 3 * sizeof(float), cudaMemcpyDeviceToDevice);
+	//cudaDeviceSynchronize();
 	try {
 		OptixDenoiserParams params = {
 			.blendFactor = blendFactor

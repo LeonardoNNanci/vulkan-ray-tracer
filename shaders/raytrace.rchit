@@ -6,6 +6,7 @@
 #include "raycommon.glsl"
 
 layout(location=0) rayPayloadInEXT hitPayload prd;
+layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 layout(set=1, binding=2) readonly buffer ModelDescription_ { ModelDescription o[]; } modelDescription;
@@ -38,25 +39,11 @@ void main()
 	vec3 p2 = vertexBuffer.v[desc.vertexStride + i2].pos.xyz;
 	vec3 p3 = vertexBuffer.v[desc.vertexStride + i3].pos.xyz;
 	vec3 objectNormal = normalize(cross((p3 - p2), (p1 - p2)));
-    
-    vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 0.));
 
-    // backface hit
-    if(dot(objectNormal, gl_ObjectRayDirectionEXT) > 0){
-        prd.done = true;
-        prd.hitValue = vec3(0., 0., 0.);
-    }
-    // hit
-    else{
-        vec3 dir = normalize(rand3(gl_HitTEXT));
-        dir = objectNormal + (dir * 0.999);
-        prd.done = false;
-        prd.rayOrigin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
-        prd.rayDirection = gl_ObjectToWorldEXT * vec4(dir, 0.);
-        
-        // denoiser: albedo & normal
-        if(prd.fillGuideLayers) {
-            vec3 cameraNormal = (view * vec4(worldNormal, 0.)).xyz;
+    // pre-pass
+    if(prd.fillGuideLayers){
+        vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 0.));
+        vec3 cameraNormal = (view * vec4(worldNormal, 0.)).xyz;
             cameraNormal = normalize(cameraNormal.xyz);
             cameraNormal.g = -cameraNormal.g;
 
@@ -64,6 +51,34 @@ void main()
 
             prd.albedo = albedo[gl_InstanceID % 7];
             prd.normal = cameraNormal;
-        }
+            return;
     }
+
+    // ray trace
+    if(prd.depth >= 31){
+        prd.hitValue = vec3(0.);
+        return;
+    }
+
+    vec3 dir = normalize(rand3(gl_HitTEXT));
+    dir = objectNormal + (dir * 0.999);
+    vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
+    vec3 direction = (gl_ObjectToWorldEXT * vec4(dir, 0.)).xyz;
+
+    prd.depth++;
+    traceRayEXT(topLevelAS,         // acceleration structure
+        gl_RayFlagsNoneEXT,  // rayFlags
+        0xFF,               // cullMask
+        0,                  // sbtRecordOffset
+        0,                  // sbtRecordStride
+        0,                  // missIndex
+        origin,             // ray origin
+        0.1,                // ray min range
+        direction,             // ray direction
+        100000.0,           // ray max range
+        0                   // payload (location = 0)
+    );
+    prd.depth--;
+
+    prd.hitValue = 0.75 * albedo[gl_InstanceID] * prd.hitValue;
 }

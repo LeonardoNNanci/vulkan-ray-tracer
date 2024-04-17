@@ -292,6 +292,7 @@ int main() {
 		.addDescriptorSet(rayTracingSets[0])
 		.addDescriptorSet(sceneSet)
 		.addPushconstant(pc)
+		.setMaxRecursionDepth(31)
 		.build();
 
 	auto bufferToImage = createComputePipeline(setup, "./shaders/buffer_to_image.spv", { rayTracingSets[0]->layout}, {});
@@ -315,12 +316,6 @@ int main() {
 		imgToArrayBuffers[i] = commandPool->createCommandBuffer();
 		arrayToImgBuffers[i] = commandPool->createCommandBuffer();
 	}
-
-	//layoutChangeBuffer->begin();
-	//for (auto& img : presentation->albedoImages)
-	//	img->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
-	//layoutChangeBuffer->submit();
-	//layoutChangeBuffer->waitFinished();
 
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
@@ -392,7 +387,7 @@ int main() {
 		auto centerTile = calcTile(INNER_RADIUS, false);
 		auto outerTiles = calcTiles(INNER_RADIUS, WIDTH / 2);
 		auto fullImage = calcTile(WIDTH / 2, true);
-		fullDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
 		partialDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
 		fullDenoiser->synchronize();
 		partialDenoiser->synchronize();

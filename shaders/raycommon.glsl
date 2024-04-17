@@ -1,8 +1,5 @@
 struct hitPayload
 {
-	bool done;
-	vec3 rayDirection;
-	vec3 rayOrigin;
 	vec3 hitValue;
 	uint depth;
 	vec3 albedo;
