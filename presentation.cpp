@@ -45,8 +45,6 @@ std::shared_ptr<Presentation> PresentationBuilder::build()
     this->presentation->swapchain = this->createSwapchain();
     this->presentation->swapchain.images = this->createImages();
     int nImages = this->presentation->swapchain.images.size();
-    this->presentation->albedoImages = this->createDenoiserImages(nImages);
-    this->presentation->normalImages = this->createDenoiserImages(nImages);
 
     return this->presentation;
 }

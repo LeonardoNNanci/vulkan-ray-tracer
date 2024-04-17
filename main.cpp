@@ -120,6 +120,7 @@ int main() {
 		.addExtensions(AccelerationStructureBuilder::getRequirements())
 		.addExtensions(DescriptorSetBuilder::getRequirements())
 		.addExtensions(PipelineBuilder::getRequirements())
+		.addExtensions(Semaphore::getRequirements())
 		.build();
 	auto presentation = PresentationBuilder(setup, WIDTH, HEIGHT).build();
 	auto commandPool = CommandPoolBuilder(setup).build();
@@ -361,8 +362,6 @@ int main() {
 
 		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore->handle }, {}).value;
 		auto currentImage = presentation->swapchain.images[imageIndex];
-		auto albedoImage = presentation->albedoImages[imageIndex];
-		auto normalImage = presentation->normalImages[imageIndex];
 
 		timelineSemaphore->waitSignaled(timelineTracker);
 		layoutChangeBuffer->clearSync();

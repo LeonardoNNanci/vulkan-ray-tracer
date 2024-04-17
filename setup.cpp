@@ -267,3 +267,11 @@ VkResult vkGetMemoryWin32HandleKHR(
     auto func = reinterpret_cast<PFN_vkGetMemoryWin32HandleKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetMemoryWin32HandleKHR"));
     return func(device, pGetWin32HandleInfo, pHandle);
 }
+
+VkResult vkGetSemaphoreWin32HandleKHR(
+    VkDevice                                    device,
+    const VkSemaphoreGetWin32HandleInfoKHR* pGetWin32HandleInfo,
+    HANDLE* pHandle) {
+    auto func = reinterpret_cast<PFN_vkGetSemaphoreWin32HandleKHR>(vkGetDeviceProcAddr(globalDevice, "vkGetSemaphoreWin32HandleKHR"));
+    return func(device, pGetWin32HandleInfo, pHandle);
+}
