@@ -11,16 +11,17 @@
 #include<glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
+#include<iostream>
 
-#define WIDTH 1920
+#define WIDTH 960
 #define HEIGHT 1080
-#define INNER_RADIUS 150
-#define OUTER_RADIUS 400
+#define INNER_RADIUS 144
+#define OUTER_RADIUS 288
 
 glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
-#define FRAMES_IN_FLIGHT 3
-uint64_t timelineTrackers[] = { 3, 6, 9 };
+#define FRAMES_IN_FLIGHT 1
+uint64_t timelineTrackers[] = { 6, 12, 18 };
 int iterationTracker = 0;
 
 float calcHalfTileSize(float radius, bool circumscribed) {
@@ -113,13 +114,14 @@ int prevIteration() {
 	return prev >= 0 ? prev : FRAMES_IN_FLIGHT - 1;
 }
 
-int main() {
+void run() {
 	auto setup = SetupBuilder()
 		.addExtensions(PresentationBuilder::getRequirements())
 		.addExtensions(BufferExternalBuilder::getRequirements())
 		.addExtensions(AccelerationStructureBuilder::getRequirements())
 		.addExtensions(DescriptorSetBuilder::getRequirements())
 		.addExtensions(PipelineBuilder::getRequirements())
+		.addExtensions(Semaphore::getRequirements())
 		.build();
 	auto presentation = PresentationBuilder(setup, WIDTH, HEIGHT).build();
 	auto commandPool = CommandPoolBuilder(setup).build();
@@ -128,11 +130,11 @@ int main() {
 
 	vk::QueryPoolCreateInfo queryPoolInfo{
 		.queryType = vk::QueryType::eTimestamp,
-		.queryCount = 10
+		.queryCount = 12
 	};
 	auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
-	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
+	auto dragonModel = FileReader().readPLY("C:\\Users\\leoga\\Desktop\\TCC\\models\\dragon_vrip.ply");
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
 	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
 	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
@@ -156,13 +158,6 @@ int main() {
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
 			.build();
-	auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
-		.setGuideAlbedo()
-		.setGuideNormal()
-		.build();
-	auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
-		.setGuideAlbedo()
-		.build();
 
 	Descriptor bvhDescriptor{
 		.set = 0,
@@ -317,9 +312,23 @@ int main() {
 		arrayToImgBuffers[i] = commandPool->createCommandBuffer();
 	}
 
+	//layoutChangeBuffer->begin();
+	//for (auto& img : presentation->albedoImages)
+	//	img->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
+	//layoutChangeBuffer->submit();
+	//layoutChangeBuffer->waitFinished();
+
+		auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.setGuideNormal()
+		.build();
+	auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.build();
+
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
-
+	printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
@@ -356,52 +365,54 @@ int main() {
 
 		int imageIndex = setup->device.acquireNextImageKHR(presentation->swapchain.handle, UINT64_MAX, { imageReadySemaphore->handle }, {}).value;
 		auto currentImage = presentation->swapchain.images[imageIndex];
-		auto albedoImage = presentation->albedoImages[imageIndex];
-		auto normalImage = presentation->normalImages[imageIndex];
 
 		timelineSemaphore->waitSignaled(timelineTracker);
 		layoutChangeBuffer->clearSync();
 		rayTracingBuffer->clearSync();
 		arrayToImgBuffer->clearSync();
 
+		int queryTracker = 0;
+
 		layoutChangeBuffer->addWaitSemaphore(imageReadySemaphore, vk::PipelineStageFlagBits::eAllCommands);
 		layoutChangeBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		layoutChangeBuffer->begin();
 		layoutChangeBuffer->handle.resetQueryPool(queryPool, 0, 10);
+		layoutChangeBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
 		currentImage->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
+		layoutChangeBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		layoutChangeBuffer->submit();
 		layoutChangeBuffer->waitFinished();
 
 		rayTracingSet->updateDescriptor(rgbaImageDescriptor, currentImage);
 
-		rayTracingBuffer->addWaitSemaphore(prevSemaphore, vk::PipelineStageFlagBits::eAllCommands, timelineTracker - 3 + 1);
 		rayTracingBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eRayTracingShaderKHR, timelineTracker);
 		rayTracingBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		rayTracingBuffer->begin();
-		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, 0);
+		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
 		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet}, { pc }, ranges);
-		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, 1);
+		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		rayTracingBuffer->submit();
-		rayTracingBuffer->waitFinished();
 
 		auto centerTile = calcTile(INNER_RADIUS, false);
 		auto outerTiles = calcTiles(INNER_RADIUS, WIDTH / 2);
 		auto fullImage = calcTile(WIDTH / 2, true);
-		fullDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
+		fullDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		partialDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
 		partialDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
-		fullDenoiser->synchronize();
-		partialDenoiser->synchronize();
+		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
 		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
-		fullDenoiser->synchronize();
 
+		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(renderFinishedSemaphore, vk::PipelineStageFlagBits::eAllCommands);
 		arrayToImgBuffer->begin();
+		arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
 		arrayToImgBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, bufferToImage->handle);
 		arrayToImgBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, bufferToImage->layout, 0, { rayTracingSet->handle }, { 0 });
 		arrayToImgBuffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
 		currentImage->presentBarrier(arrayToImgBuffer);
-		//arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, 9);
+		arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		arrayToImgBuffer->submit();
 		
 		std::vector<vk::SwapchainKHR> swapchains = { presentation->swapchain.handle };
@@ -412,10 +423,27 @@ int main() {
 		presentInfo.setWaitSemaphores(renderFinishedSemaphore->handle);
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 
-		auto timestamps = setup->device.getQueryPoolResults<uint64_t>(queryPool, 0, 2, 2*sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::e64).value;
-		float rtTime = float(timestamps[1] - timestamps[0]) * deviceLimits.timestampPeriod / 1000000.0f;
-		printf("%f\n", rtTime);
+		auto timestamps = setup->device.getQueryPoolResults<uint64_t>(queryPool, 0, queryTracker, queryTracker*sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::e64).value;
+		for (int i = 0; i < timestamps.size(); i += 2) {
+			float rtTime = float(timestamps[i+1] - timestamps[i]) * deviceLimits.timestampPeriod / 1000000.0f;
+			printf("%f\t", rtTime);
+		}
+		{
+			float rtTime = float(timestamps[4] - timestamps[3]) * deviceLimits.timestampPeriod / 1000000.0f;
+			printf("%f\t", rtTime);
+			printf("%f\n", 1 / deltaTime);
+		}
 	}
 	printf("\n");
 	setup->device.waitIdle();
+	setup->device.destroyQueryPool(queryPool);
+}
+
+int main() {
+	try {
+		run();
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+	}
 }

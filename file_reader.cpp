@@ -5,6 +5,7 @@
 
 std::vector<char> FileReader::readSPV(const std::string filename)
 {
+    std::cout << "Reading file " << filename << "..." << std::endl;
     std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {

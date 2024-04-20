@@ -23,8 +23,6 @@ public:
 	GLFWwindow* window;
 	vk::SurfaceKHR surface;
 	Swapchain swapchain;
-	std::vector<std::shared_ptr<Image>> albedoImages;
-	std::vector<std::shared_ptr<Image>> normalImages;
 
 	Presentation(std::shared_ptr<Setup> setup);
 

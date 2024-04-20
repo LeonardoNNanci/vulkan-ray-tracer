@@ -28,24 +28,26 @@ float tMax     = 10000.0;
 float calcRatio(ivec2 pixel){
     ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
     float dist = length(pixel - imageCenter);
-    float ratio;
-    for(int i = 0; i < ratioCount; i++){
-        Range r = foveatedRangeBuffer[i];
-        if(dist >= r.innerRadius && dist < r.outerRadius){
-            ratio = r.ratio;
-            break;
-        }
-        Range nextR = foveatedRangeBuffer[i+1];
-        if(dist >= r.outerRadius && dist < nextR.innerRadius){
-            ratio = (dist - r.outerRadius) / (nextR.innerRadius - r.outerRadius);
-            ratio *= (nextR.ratio - r.ratio);
-            ratio += r.ratio;
-            break;
-        }
-    }
 
+    float innerRatio = foveatedRangeBuffer[0].ratio;
+    float outerRatio = foveatedRangeBuffer[1].ratio;
+
+    float innerRadius = foveatedRangeBuffer[0].outerRadius;
+    float outerRadius = foveatedRangeBuffer[1].innerRadius;
+
+    if(dist <= innerRadius)
+        return innerRatio;
+
+    if(dist > outerRadius)
+        return outerRatio;
+
+    float ratio = (dist - innerRadius) / (outerRadius - innerRadius);
+    ratio = pow(ratio, 2);
+    ratio *= (outerRatio - innerRatio);
+    ratio += innerRatio;
     return ratio;
 }
+
 
 void fillBuffers(ivec2 pixel){
     uint linear = pixel.y * gl_LaunchSizeEXT.x * 3 + pixel.x * 3;
