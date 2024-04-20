@@ -1,7 +1,7 @@
+#pragma once
 #include "denoiser.hpp"
 #include <iostream>
-
-#pragma once
+#include<algorithm>
 #include <stdexcept>
 #include <optix.h>
 #include <optix_function_table_definition.h>
@@ -37,6 +37,8 @@ std::shared_ptr<Denoiser> DenoiserBuilder::build()
 	this->handle = this->createDenoiser();
 	this->setupDenoiser();
 
+	cudaMalloc(reinterpret_cast<void**>(&this->hdrIntensity), sizeof(float));
+
 	auto denoiser = std::make_shared<Denoiser>(
 		this->context,
 		this->stream,
@@ -45,7 +47,8 @@ std::shared_ptr<Denoiser> DenoiserBuilder::build()
 		this->height,
 		this->denoiserBuffer,
 		this->scratchBuffer,
-		this->sizes
+		this->sizes,
+		this->hdrIntensity
 	);
 
 	return denoiser;
@@ -79,12 +82,12 @@ CUstream DenoiserBuilder::createStream()
 }
 
 OptixDenoiser DenoiserBuilder::createDenoiser() {
-	auto kind = OPTIX_DENOISER_MODEL_KIND_LDR;
+	auto kind = OPTIX_DENOISER_MODEL_KIND_HDR;
 	
 	OptixDenoiserOptions options{
 		.guideAlbedo = this->guideAlbedo,
 		.guideNormal = this->guideNormal,
-		.denoiseAlpha = OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE
+		.denoiseAlpha = OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_COPY
 	};
 	OptixDenoiser denoiser = nullptr;
 	
@@ -97,14 +100,19 @@ void DenoiserBuilder::setupDenoiser() {
 
 	optixDenoiserComputeMemoryResources(this->handle, (uint)this->width, (uint)this->height, &this->sizes);
 
+	auto scratchSize = max(this->sizes.computeIntensitySizeInBytes,
+		max(
+			this->sizes.withoutOverlapScratchSizeInBytes, this->sizes.withOverlapScratchSizeInBytes
+		)
+	);
+	cudaMalloc(reinterpret_cast<void**>(&this->scratchBuffer), scratchSize);
 	cudaMalloc(reinterpret_cast<void**>(&this->denoiserBuffer), this->sizes.stateSizeInBytes);
-	cudaMalloc(reinterpret_cast<void**>(&this->scratchBuffer), this->sizes.withOverlapScratchSizeInBytes);
 
 	cudaDeviceSynchronize();
 	optixDenoiserSetup(this->handle, this->stream, this->width, this->height, this->denoiserBuffer, this->sizes.stateSizeInBytes, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
 }
 
-Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes) :
+Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes, CUdeviceptr hdrIntensity) :
 	context(context),
 	stream(stream),
 	handle(handle),
@@ -112,8 +120,10 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 	height(heigth),
 	denoiserBuffer(denoiserBuffer),
 	scratchBuffer(scratchBuffer),
-	sizes(sizes)
-{}
+	sizes(sizes),
+	hdrIntensity(hdrIntensity)
+{
+}
 
 void Denoiser::setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal)
 {
@@ -171,42 +181,46 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 	if (cudaWaitExternalSemaphoresAsync(&this->semaphore, &waitParams, 1, this->stream) != CUDA_SUCCESS)
 		throw std::runtime_error("Failed to sync cuda-vulkan\n");
 
-	try {
-		OptixDenoiserParams params = {
-			.blendFactor = blendFactor
+	auto img = calcTiles({ {{0,0}, {this->width, this->height}} }, 0, this->width, this->height)[0];
+	img.input.data += inputBuffer;
+	auto optResult = optixDenoiserComputeIntensity(this->handle, this->stream, &img.input, this->hdrIntensity, this->scratchBuffer, this->sizes.computeIntensitySizeInBytes);
+	if (optResult != OPTIX_SUCCESS)
+		throw std::runtime_error("Failed to compute HDR Intensity\n");
+
+	OptixDenoiserParams params = {
+		.hdrIntensity = hdrIntensity,
+		.blendFactor = blendFactor
+	};
+
+	auto tiles = calcTiles(tileDescriptions, 200, this->width, this->height);
+
+	for (int i = 0; i < tiles.size(); i++) {
+		OptixDenoiserGuideLayer guideLayer{
+			.albedo = tiles[i].input,
+			.normal = tiles[i].input
 		};
 
-		auto tiles = calcTiles(tileDescriptions, 200, this->width, this->height);
+		OptixDenoiserLayer layers{
+			.input = tiles[i].input,
+			.output = tiles[i].output
+		};
 
-		for (int i = 0; i < tiles.size(); i++) {
-			OptixDenoiserGuideLayer guideLayer{
-				.albedo = tiles[i].input,
-				.normal = tiles[i].input
-			};
+		guideLayer.albedo.data += albedoBuffer;
+		guideLayer.normal.data += normalBuffer;
+		layers.input.data += inputBuffer;
+		layers.output.data += outputBuffer;
 
-			OptixDenoiserLayer layers{
-				.input = tiles[i].input,
-				.output = tiles[i].output
-			};
-
-			guideLayer.albedo.data += albedoBuffer;
-			guideLayer.normal.data += normalBuffer;
-			layers.input.data += inputBuffer;
-			layers.output.data += outputBuffer;
-
-			optixDenoiserInvoke(this->handle, this->stream, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, 1, tiles[i].inputOffsetX, tiles[i].inputOffsetY, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
-		}
-		
-	}
-	catch (const std::exception& e)
-	{
-		std::cout << e.what() << std::endl;
+		auto optResult = optixDenoiserInvoke(this->handle, this->stream, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, 1, tiles[i].inputOffsetX, tiles[i].inputOffsetY, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
+		if (optResult != OPTIX_SUCCESS)
+			throw std::runtime_error("Failed to invoke denoiser\n");
 	}
 
 	cudaExternalSemaphoreSignalParams signalParams{};
 	signalParams.params.fence.value = this->signalSignal;
-	if(cudaSignalExternalSemaphoresAsync(&this->semaphore, &signalParams, 1, this->stream) != CUDA_SUCCESS)
+	auto cudaRes = cudaSignalExternalSemaphoresAsync(&this->semaphore, &signalParams, 1, this->stream);
+	if (cudaRes != CUDA_SUCCESS)
 		throw std::runtime_error("Failed to sync cuda-vulkan\n");
+
 }
 
 
@@ -222,6 +236,7 @@ void Denoiser::hardSynchronize()
 
 Denoiser::~Denoiser()
 {	
+	cudaFree((void*)this->hdrIntensity);
 	cudaFree((void*)this->scratchBuffer);
 	cudaFree((void*)this->denoiserBuffer);
 	optixDenoiserDestroy(this->handle);

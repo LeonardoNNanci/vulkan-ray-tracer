@@ -14,7 +14,7 @@ typedef unsigned int uint;
 
 class Denoiser {
 public:
-	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes);
+	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes, CUdeviceptr hdrIntensity);
 
 	void setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal);
 
@@ -43,6 +43,8 @@ private:
 	cudaExternalSemaphore_t semaphore;
 	uint64_t waitSignal;
 	uint64_t signalSignal;
+
+	CUdeviceptr hdrIntensity;
 };
 
 class DenoiserBuilder : public Builder <std::shared_ptr< Denoiser >> {
@@ -63,6 +65,7 @@ private:
 	OptixDenoiser handle = NULL;
 	CUdeviceptr denoiserBuffer = NULL;
 	CUdeviceptr scratchBuffer = NULL;
+	CUdeviceptr hdrIntensity = NULL;
 	OptixDenoiserSizes sizes = { 0, 0, 0, 0, 0, 0, 0 };
 	bool guideAlbedo = false;
 	bool guideNormal = false;

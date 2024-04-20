@@ -11,15 +11,16 @@
 #include<glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
+#include<iostream>
 
-#define WIDTH 1920
+#define WIDTH 960
 #define HEIGHT 1080
-#define INNER_RADIUS 150
-#define OUTER_RADIUS 400
+#define INNER_RADIUS 144
+#define OUTER_RADIUS 288
 
 glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
-#define FRAMES_IN_FLIGHT 3
+#define FRAMES_IN_FLIGHT 1
 uint64_t timelineTrackers[] = { 6, 12, 18 };
 int iterationTracker = 0;
 
@@ -113,7 +114,7 @@ int prevIteration() {
 	return prev >= 0 ? prev : FRAMES_IN_FLIGHT - 1;
 }
 
-int main() {
+void run() {
 	auto setup = SetupBuilder()
 		.addExtensions(PresentationBuilder::getRequirements())
 		.addExtensions(BufferExternalBuilder::getRequirements())
@@ -133,7 +134,7 @@ int main() {
 	};
 	auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
-	auto dragonModel = FileReader().readPLY("./models/dragon_vrip.ply");
+	auto dragonModel = FileReader().readPLY("C:\\Users\\leoga\\Desktop\\TCC\\models\\dragon_vrip.ply");
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
 	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
 	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
@@ -157,13 +158,6 @@ int main() {
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
 			.build();
-	auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
-		.setGuideAlbedo()
-		.setGuideNormal()
-		.build();
-	auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
-		.setGuideAlbedo()
-		.build();
 
 	Descriptor bvhDescriptor{
 		.set = 0,
@@ -323,9 +317,17 @@ int main() {
 	//layoutChangeBuffer->submit();
 	//layoutChangeBuffer->waitFinished();
 
+		auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.setGuideNormal()
+		.build();
+	auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
+		.setGuideAlbedo()
+		.build();
+
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
-	printf("LC\t\tRT\t\tA2I\t\tDenoisers\n");
+	printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
@@ -427,10 +429,20 @@ int main() {
 		}
 		{
 			float rtTime = float(timestamps[4] - timestamps[3]) * deviceLimits.timestampPeriod / 1000000.0f;
-			printf("%f\n", rtTime);
+			printf("%f\t", rtTime);
+			printf("%f\n", 1 / deltaTime);
 		}
 	}
 	printf("\n");
 	setup->device.waitIdle();
 	setup->device.destroyQueryPool(queryPool);
+}
+
+int main() {
+	try {
+		run();
+	}
+	catch (const std::exception& e) {
+		std::cerr << e.what() << std::endl;
+	}
 }
