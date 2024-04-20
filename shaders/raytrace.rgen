@@ -28,28 +28,36 @@ struct Data {
     int prevRadius;
 };
 
+float calcRatio(ivec2 pixel){
+    ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
+    float dist = length(pixel - imageCenter);
+
+    float innerRatio = foveatedRangeBuffer[0].ratio;
+    float outerRatio = foveatedRangeBuffer[1].ratio;
+
+    float innerRadius = foveatedRangeBuffer[0].outerRadius;
+    float outerRadius = foveatedRangeBuffer[1].innerRadius;
+
+    if(dist <= innerRadius)
+        return innerRatio;
+
+    if(dist > outerRadius)
+        return outerRatio;
+
+    float ratio = (dist - innerRadius) / (outerRadius - innerRadius);
+    ratio = pow(ratio, 2);
+    ratio *= (outerRatio - innerRatio);
+    ratio += innerRatio;
+    return ratio;
+}
+
 void main() 
 {
     ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
-    ivec2 imageCenter = ivec2(gl_LaunchSizeEXT.xy) / 2;
-
-    float dist = length(pixel - imageCenter);
-    float ratio;
-    for(int i = 0; i < ratioCount; i++){
-        Range r = foveatedRangeBuffer[i];
-        if(dist >= r.innerRadius && dist < r.outerRadius){
-            ratio = r.ratio;
-            break;
-        }
-        Range nextR = foveatedRangeBuffer[i+1];
-        if(dist >= r.outerRadius && dist < nextR.innerRadius){
-            ratio = (dist - r.outerRadius) / (nextR.innerRadius - r.outerRadius);
-            ratio *= (nextR.ratio - r.ratio);
-            ratio += r.ratio;
-            break;
-        }
-    }
-
+    
+    float ratio = calcRatio(pixel);
+    if(pixel.x == 959 && pixel.y == 1079)
+        debugPrintfEXT("%f\n\n\n\n\n", ratio);
     uint  rayFlags = gl_RayFlagsOpaqueEXT;
     float tMin     = 0.00001;
     float tMax     = 10000.0;
