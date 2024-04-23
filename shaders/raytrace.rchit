@@ -73,12 +73,12 @@ void main()
         0,                  // sbtRecordStride
         0,                  // missIndex
         origin,             // ray origin
-        0.1,                // ray min range
+        0.000001,                // ray min range
         direction,             // ray direction
         100000.0,           // ray max range
         0                   // payload (location = 0)
     );
     prd.depth--;
 
-    prd.hitValue = 0.75 * albedo[gl_InstanceID] * prd.hitValue;
+    prd.hitValue = .8 * albedo[gl_InstanceID] * prd.hitValue;
 }

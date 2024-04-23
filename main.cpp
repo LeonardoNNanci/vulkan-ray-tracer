@@ -15,8 +15,8 @@
 
 #define WIDTH 960
 #define HEIGHT 1080
-#define INNER_RADIUS 144
-#define OUTER_RADIUS 288
+#define INNER_RADIUS 1000
+#define OUTER_RADIUS 1001
 
 glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
