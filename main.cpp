@@ -13,10 +13,11 @@
 #include <chrono>
 #include<iostream>
 
-#define WIDTH 960
+#define WIDTH 1080
 #define HEIGHT 1080
-#define INNER_RADIUS 1000
-#define OUTER_RADIUS 1001
+#define INNER_RADIUS 144
+#define OUTER_RADIUS 288
+#define P 0.1
 
 glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
@@ -70,7 +71,7 @@ Model3D squareModel {
 		3, 2, 1}
 };
 
-std::vector<Range> ranges = { {1, 0, INNER_RADIUS}, {10, OUTER_RADIUS, WIDTH} };
+std::vector<Range> ranges = { {1, 0, INNER_RADIUS}, {1/P, OUTER_RADIUS, WIDTH} };
 
 std::shared_ptr<Pipeline> createComputePipeline(std::shared_ptr<Setup> setup, const char* shaderFile,
 	std::vector<vk::DescriptorSetLayout> pipelineDescriptorSetLayouts,
@@ -332,9 +333,9 @@ void run() {
 	while (presentation->windowIsOpen()) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle += 30. * deltaTime;
+		//angle += 30. * deltaTime;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(2.0f, 2.0f, 1.0f, 1.0f);
+		auto cameraPosition = glm::vec4(2.2f, 2.2f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
 		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
@@ -394,12 +395,12 @@ void run() {
 		rayTracingBuffer->submit();
 
 		auto centerTile = calcTile(INNER_RADIUS, false);
-		auto outerTiles = calcTiles(INNER_RADIUS, WIDTH / 2);
-		auto fullImage = calcTile(WIDTH / 2, true);
-		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(0.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
+		auto outerTiles = calcTiles(INNER_RADIUS, std::max(WIDTH, HEIGHT) / 2);
+		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		partialDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		partialDenoiser->run(.1, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, outerTiles);
+		partialDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, fullImage);
+		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
+		fullDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
 		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 
@@ -429,8 +430,8 @@ void run() {
 			printf("%f\t", rtTime);
 		}
 		{
-			float rtTime = float(timestamps[4] - timestamps[3]) * deviceLimits.timestampPeriod / 1000000.0f;
-			printf("%f\t", rtTime);
+			float denoiseTime = float(timestamps[4] - timestamps[3]) * deviceLimits.timestampPeriod / 1000000.0f;
+			printf("%f\t", denoiseTime);
 			printf("%f\n", 1 / deltaTime);
 		}
 	}
