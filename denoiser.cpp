@@ -192,7 +192,7 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 		.blendFactor = blendFactor
 	};
 
-	auto tiles = calcTiles(tileDescriptions, 200, this->width, this->height);
+	auto tiles = calcTiles(tileDescriptions, 0, this->width, this->height);
 
 	for (int i = 0; i < tiles.size(); i++) {
 		OptixDenoiserGuideLayer guideLayer{

@@ -220,6 +220,12 @@ void run() {
 		.type = vk::DescriptorType::eStorageBuffer,
 		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
+	Descriptor partialResultDescriptor{
+		.set = 0,
+		.binding = 9,
+		.type = vk::DescriptorType::eStorageBuffer,
+		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+	};
 
 	auto sceneSet = DescriptorSetBuilder(setup)
 		.addBinding(vertexBufferDescriptor)
@@ -249,7 +255,8 @@ void run() {
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor)
-		.addBinding(foveatedRangesDescriptor);
+		.addBinding(foveatedRangesDescriptor)
+		.addBinding(partialResultDescriptor);
 
 	auto foveatedRangeBuffer = BufferBuilder(setup)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
@@ -272,6 +279,7 @@ void run() {
 		rayTracingSets[i]->updateDescriptor(rgbDescriptor, inputBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
+		rayTracingSets[i]->updateDescriptor(partialResultDescriptor, partialResultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(foveatedRangesDescriptor, foveatedRangeBuffer);
 	}
@@ -292,6 +300,7 @@ void run() {
 		.build();
 
 	auto bufferToImage = createComputePipeline(setup, "./shaders/buffer_to_image.spv", { rayTracingSets[0]->layout}, {});
+	auto imageBlend = createComputePipeline(setup, "./shaders/image_blend.spv", { rayTracingSets[0]->layout }, {});
 
 	std::shared_ptr<Semaphore> imageReadySemaphores[FRAMES_IN_FLIGHT];
 	std::shared_ptr<Semaphore> renderFinishedSemaphores[FRAMES_IN_FLIGHT];
@@ -301,6 +310,7 @@ void run() {
 	std::shared_ptr<CommandBuffer> rayTracingBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<CommandBuffer> imgToArrayBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<CommandBuffer> arrayToImgBuffers[FRAMES_IN_FLIGHT];
+	std::shared_ptr<CommandBuffer> blendImageBuffers[FRAMES_IN_FLIGHT];
 
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		imageReadySemaphores[i] = std::make_shared<Semaphore>(setup);
@@ -311,13 +321,8 @@ void run() {
 		rayTracingBuffers[i] = commandPool->createCommandBuffer();
 		imgToArrayBuffers[i] = commandPool->createCommandBuffer();
 		arrayToImgBuffers[i] = commandPool->createCommandBuffer();
+		blendImageBuffers[i] = commandPool->createCommandBuffer();
 	}
-
-	//layoutChangeBuffer->begin();
-	//for (auto& img : presentation->albedoImages)
-	//	img->pipelineBarrier(layoutChangeBuffer, vk::ImageLayout::eGeneral);
-	//layoutChangeBuffer->submit();
-	//layoutChangeBuffer->waitFinished();
 
 		auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
 		.setGuideAlbedo()
@@ -354,6 +359,7 @@ void run() {
 		auto& layoutChangeBuffer = layoutChangeBuffers[iterationTracker];
 		auto& rayTracingBuffer = rayTracingBuffers[iterationTracker];
 		auto& arrayToImgBuffer = arrayToImgBuffers[iterationTracker];
+		auto& blendImageBuffer = blendImageBuffers[iterationTracker];
 
 		auto& rayTracingSet = rayTracingSets[iterationTracker];
 		auto& inputBuffer = inputBuffers[iterationTracker];
@@ -371,6 +377,7 @@ void run() {
 		layoutChangeBuffer->clearSync();
 		rayTracingBuffer->clearSync();
 		arrayToImgBuffer->clearSync();
+		blendImageBuffer->clearSync();
 
 		int queryTracker = 0;
 
@@ -394,15 +401,23 @@ void run() {
 		rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		rayTracingBuffer->submit();
 
-		auto centerTile = calcTile(INNER_RADIUS, false);
-		auto outerTiles = calcTiles(INNER_RADIUS, std::max(WIDTH, HEIGHT) / 2);
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		partialDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		partialDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, partialResultBuffer->optixBuffer, fullImage);
+		partialDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		
+		blendImageBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
+		blendImageBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
+		blendImageBuffer->begin();
+		blendImageBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
+		blendImageBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, imageBlend->handle);
+		blendImageBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, imageBlend->layout, 0, { rayTracingSet->handle }, { 0 });
+		blendImageBuffer->handle.dispatch(ceil((float)WIDTH / 16.), ceil((float)HEIGHT / 16.), 1);
+		blendImageBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
+		blendImageBuffer->submit();
+
+		auto centerTile = calcTile(OUTER_RADIUS, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, partialResultBuffer->optixBuffer, centerTile);
-		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(0., partialResultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
@@ -411,7 +426,7 @@ void run() {
 		arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
 		arrayToImgBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, bufferToImage->handle);
 		arrayToImgBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, bufferToImage->layout, 0, { rayTracingSet->handle }, { 0 });
-		arrayToImgBuffer->handle.dispatch(ceil((float)WIDTH / 16), ceil((float)HEIGHT / 16), 1);
+		arrayToImgBuffer->handle.dispatch(ceil((float)WIDTH / 16.), ceil((float)HEIGHT / 16.), 1);
 		currentImage->presentBarrier(arrayToImgBuffer);
 		arrayToImgBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		arrayToImgBuffer->submit();
@@ -425,15 +440,15 @@ void run() {
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 
 		auto timestamps = setup->device.getQueryPoolResults<uint64_t>(queryPool, 0, queryTracker, queryTracker*sizeof(uint64_t), sizeof(uint64_t), vk::QueryResultFlagBits::eWait | vk::QueryResultFlagBits::e64).value;
-		for (int i = 0; i < timestamps.size(); i += 2) {
-			float rtTime = float(timestamps[i+1] - timestamps[i]) * deviceLimits.timestampPeriod / 1000000.0f;
-			printf("%f\t", rtTime);
-		}
-		{
+		//for (int i = 0; i < timestamps.size(); i += 2) {
+		//	float rtTime = float(timestamps[i+1] - timestamps[i]) * deviceLimits.timestampPeriod / 1000000.0f;
+		//	printf("%f\t", rtTime);
+		//}
+		/*{
 			float denoiseTime = float(timestamps[4] - timestamps[3]) * deviceLimits.timestampPeriod / 1000000.0f;
 			printf("%f\t", denoiseTime);
 			printf("%f\n", 1 / deltaTime);
-		}
+		}*/
 	}
 	printf("\n");
 	setup->device.waitIdle();
