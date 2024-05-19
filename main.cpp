@@ -12,14 +12,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 #include<iostream>
+#include <cstdlib>
 
-#define WIDTH 1080
-#define HEIGHT 1080
-#define INNER_RADIUS 144
-#define OUTER_RADIUS 288
-#define P .1
 
-glm::ivec2 gazePoint = { WIDTH / 2, HEIGHT / 2 };
+int WIDTH;
+int HEIGHT;
+int INNER_RADIUS;
+int OUTER_RADIUS;
+float P;
+
+glm::ivec2 gazePoint;
 
 #define FRAMES_IN_FLIGHT 1
 uint64_t timelineTrackers[] = { 6, 12, 18 };
@@ -71,7 +73,7 @@ Model3D squareModel {
 		3, 2, 1}
 };
 
-std::vector<Range> ranges = { {1, 0, INNER_RADIUS}, {1/P, OUTER_RADIUS, WIDTH} };
+std::vector<Range> ranges;;
 
 std::shared_ptr<Pipeline> createComputePipeline(std::shared_ptr<Setup> setup, const char* shaderFile,
 	std::vector<vk::DescriptorSetLayout> pipelineDescriptorSetLayouts,
@@ -456,7 +458,23 @@ void run() {
 	setup->device.destroyQueryPool(queryPool);
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+	if(argc < 6)
+	{
+		std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT INNER_RADUIS OUTER_RADIUS P" << std::endl;
+		return -1;
+	}
+
+	WIDTH = std::atoi(argv[1]);
+	HEIGHT = std::atoi(argv[2]);
+	INNER_RADIUS = std::atoi(argv[3]);
+	OUTER_RADIUS = std::atoi(argv[4]);
+	P = std::atof(argv[5]);
+
+	ranges = { {1., 0., (float)INNER_RADIUS}, {(float)1. / P, (float)OUTER_RADIUS, (float)WIDTH} };
+
+	gazePoint = { WIDTH / 2, HEIGHT / 2 };
+
 	try {
 		run();
 	}
