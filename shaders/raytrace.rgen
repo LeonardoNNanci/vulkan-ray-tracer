@@ -94,7 +94,7 @@ void prePass(ivec2 pixel){
 }
 
 vec3 rayTrace(ivec2 pixel, int i){
-    vec2 seed = vec2(gl_LaunchIDEXT.xy) / vec2(gl_LaunchSizeEXT.xy);
+    vec2 seed = vec2(i, i*i);
     vec2 targetCoords = vec2(pixel) + rand3(seed).xy / 2.;
     vec2 inUV = targetCoords / vec2(gl_LaunchSizeEXT.xy);
     vec2 d = inUV * 2.0 - 1.0;
@@ -129,7 +129,7 @@ void main()
 
     prd.depth = 0;
     int maxDepth = 32;
-    int sampleCount = 4;
+    int sampleCount = 8;
     vec3 finalColor = vec3(0.);
     for(int i = 0; i < sampleCount; i++){
         finalColor += rayTrace(pixel, i);

@@ -60,7 +60,7 @@ void main()
         return;
     }
 
-    vec2 seed = (vec2(gl_LaunchIDEXT.xy) + vec2(float(prd.depth) / 32.)) / vec2(gl_LaunchSizeEXT.xy);
+    vec2 seed = vec2(gl_HitTEXT, gl_HitTEXT * gl_HitTEXT);
     vec3 dir = normalize(rand3(seed));
     dir = objectNormal + (dir * 0.999);
     vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
