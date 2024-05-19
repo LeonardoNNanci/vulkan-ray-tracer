@@ -60,7 +60,8 @@ void main()
         return;
     }
 
-    vec3 dir = normalize(rand3(gl_HitTEXT));
+    vec2 seed = vec2(gl_HitTEXT, gl_HitTEXT * gl_HitTEXT);
+    vec3 dir = normalize(rand3(seed));
     dir = objectNormal + (dir * 0.999);
     vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
     vec3 direction = (gl_ObjectToWorldEXT * vec4(dir, 0.)).xyz;

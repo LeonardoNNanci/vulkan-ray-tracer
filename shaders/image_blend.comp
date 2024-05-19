@@ -70,23 +70,28 @@ Factors calcRatio(ivec2 pixel){
 void main()
 {
     // debugPrintfEXT("%d\n", gl_GlobalInvocationID.x);
-  ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-  Factors f = calcRatio(pixel);
-  float p = rand(vec2(pixel)) / 2 + 0.5;
-  if(f.blend == 0. || p > 1. / f.ratio)
-      return;
+    ivec2 imgSize = imageSize(inImage0);
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
 
-  ivec2 imgSize = imageSize(inImage0);
-  ivec2 coord   = ivec2(gl_GlobalInvocationID.xy);
-  if(coord.x >= imgSize.x || coord.y >= imgSize.y)  // Check limits
-    return;
+    if(pixel.x >= imgSize.x || pixel.y >= imgSize.y)
+        return;
 
-  uint linear = coord.y * imgSize.x * 3 + coord.x * 3;
+    Factors f = calcRatio(pixel);
+    vec2 seed = vec2(gl_GlobalInvocationID) / vec2(imgSize);
+    float p = rand(seed) / 2 + 0.5;
+    if(f.blend == 0. || p > 1. / f.ratio)
+        return;
 
-  vec3 noisyPixel = vec3(noisy[linear], noisy[linear+1], noisy[linear+2]) / f.ratio;
-  vec3 denoisedPixel = vec3(denoised[linear], denoised[linear+1], denoised[linear+2]);
-  vec3 result = mix(denoisedPixel, noisyPixel, f.blend);
-  denoised[linear] = result.r;
-  denoised[linear + 1] = result.g;
-  denoised[linear + 2] = result.b;
+    ivec2 coord   = ivec2(gl_GlobalInvocationID.xy);
+    if(coord.x >= imgSize.x || coord.y >= imgSize.y)  // Check limits
+        return;
+
+    uint linear = coord.y * imgSize.x * 3 + coord.x * 3;
+
+    vec3 noisyPixel = vec3(noisy[linear], noisy[linear+1], noisy[linear+2]) / f.ratio;
+    vec3 denoisedPixel = vec3(denoised[linear], denoised[linear+1], denoised[linear+2]);
+    vec3 result = mix(denoisedPixel, noisyPixel, f.blend);
+    denoised[linear] = result.r;
+    denoised[linear + 1] = result.g;
+    denoised[linear + 2] = result.b;
 }

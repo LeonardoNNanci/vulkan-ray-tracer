@@ -95,7 +95,8 @@ void prePass(ivec2 pixel){
 }
 
 vec3 rayTrace(ivec2 pixel, int i){
-    vec2 targetCoords = vec2(pixel) + rand3(i).xy / 2.;
+    vec2 seed = vec2(i, i*i);
+    vec2 targetCoords = vec2(pixel) + rand3(seed).xy / 2.;
     vec2 inUV = targetCoords / vec2(gl_LaunchSizeEXT.xy);
     vec2 d = inUV * 2.0 - 1.0;
 
@@ -128,7 +129,8 @@ void main()
     prePass(pixel);
 
     float ratio = calcRatio(pixel);
-    float p = rand(vec2(pixel)) / 2 + 0.5;
+    vec2 seed = vec2(gl_LaunchIDEXT) / vec2(gl_LaunchSizeEXT);
+    float p = rand(seed) / 2 + 0.5;
     if(p > 1. / ratio)
         return;
 

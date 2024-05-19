@@ -32,9 +32,9 @@ float rand(vec2 co){
     return (fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 2;
 }
 
-vec3 rand3(float seed) {
-    float x = rand(vec2(seed, seed*seed));
-    float y = rand(vec2(x));
-    float z = rand(vec2(y));
+vec3 rand3(vec2 seed) {
+    float x = rand(seed);
+    float y = rand(seed * x);
+    float z = rand(seed * y);
     return vec3(x, y, z);
 }
