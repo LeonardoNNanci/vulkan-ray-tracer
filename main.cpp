@@ -222,12 +222,12 @@ void run() {
 		.type = vk::DescriptorType::eStorageBuffer,
 		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
-	Descriptor partialResultDescriptor{
-		.set = 0,
-		.binding = 9,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
-	};
+	//Descriptor partialResultDescriptor{
+	//	.set = 0,
+	//	.binding = 9,
+	//	.type = vk::DescriptorType::eStorageBuffer,
+	//	.stagesUsed = vk::ShaderStageFlagBits::eCompute
+	//};
 
 	auto sceneSet = DescriptorSetBuilder(setup)
 		.addBinding(vertexBufferDescriptor)
@@ -248,7 +248,7 @@ void run() {
 	std::shared_ptr<BufferExternal> inputBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> albedoBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> normalBuffers[FRAMES_IN_FLIGHT];
-	std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
+	//std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> resultBuffers[FRAMES_IN_FLIGHT];
 	auto rayTracingSetBuilder = DescriptorSetBuilder(setup)
 		.addBinding(bvhDescriptor)
@@ -257,8 +257,8 @@ void run() {
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor)
-		.addBinding(foveatedRangesDescriptor)
-		.addBinding(partialResultDescriptor);
+		.addBinding(foveatedRangesDescriptor);
+		//.addBinding(partialResultDescriptor);
 
 	auto foveatedRangeBuffer = BufferBuilder(setup)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
@@ -272,7 +272,7 @@ void run() {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
 		normalBuffers[i] = imageArrayBuilder.buildExternal();
-		partialResultBuffers[i] = imageArrayBuilder.buildExternal();
+		//partialResultBuffers[i] = imageArrayBuilder.buildExternal();
 		resultBuffers[i] = imageArrayBuilder.buildExternal();
 
 		rayTracingSets[i] = rayTracingSetBuilder.build();
@@ -281,7 +281,7 @@ void run() {
 		rayTracingSets[i]->updateDescriptor(rgbDescriptor, inputBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
-		rayTracingSets[i]->updateDescriptor(partialResultDescriptor, partialResultBuffers[i]);
+		//rayTracingSets[i]->updateDescriptor(partialResultDescriptor, partialResultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(foveatedRangesDescriptor, foveatedRangeBuffer);
 	}
@@ -366,7 +366,7 @@ void run() {
 		auto& inputBuffer = inputBuffers[iterationTracker];
 		auto& albedoBuffer = albedoBuffers[iterationTracker];
 		auto& normalBuffer = normalBuffers[iterationTracker];
-		auto& partialResultBuffer = partialResultBuffers[iterationTracker];
+		//auto& partialResultBuffer = partialResultBuffers[iterationTracker];
 		auto& resultBuffer = resultBuffers[iterationTracker];
 
 		iterationTracker = (iterationTracker + 1) % FRAMES_IN_FLIGHT;
