@@ -3,11 +3,7 @@
 #extension GL_EXT_shader_image_load_formatted : enable
 #extension GL_EXT_debug_printf : enable
 
-struct Range {
-	float ratio;
-	float innerRadius;
-	float outerRadius;
-};
+#include "raycommon.glsl"
 
 struct Factors {
   float ratio;
@@ -19,20 +15,8 @@ layout(set = 0, binding = 4) buffer _buf0 { float noisy[]; };
 layout(set = 0, binding = 7) buffer _buf1 { float denoised[]; };
 layout(set = 0, binding = 8) buffer _buff2 { Range foveatedRangeBuffer[];};
 
-
 #define GRID_SIZE 16
 layout(local_size_x = GRID_SIZE, local_size_y = GRID_SIZE) in;
-
-float rand(vec2 co){
-    return (fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 2;
-}
-
-vec3 rand3(float seed) {
-    float x = rand(vec2(seed, seed*seed));
-    float y = rand(vec2(x));
-    float z = rand(vec2(y));
-    return vec3(x, y, z);
-}
 
 Factors calcRatio(ivec2 pixel){
     Factors f;
@@ -72,7 +56,8 @@ void main()
     // debugPrintfEXT("%d\n", gl_GlobalInvocationID.x);
   ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
   Factors f = calcRatio(pixel);
-  float p = rand(vec2(pixel)) / 2 + 0.5;
+  vec2 seed = vec2(pixel) / (gl_NumWorkGroups * gl_WorkGroupSize).xy;
+  float p = rand(seed) / 2 + 0.5;
   if(f.blend == 0. || p > 1. / f.ratio)
       return;
 
