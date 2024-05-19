@@ -28,6 +28,8 @@ public:
 
 	bool windowIsOpen();
 
+	void closeWindow();
+
 	~Presentation();
 };
 

@@ -8,6 +8,10 @@ bool Presentation::windowIsOpen()
     return !glfwWindowShouldClose(this->window);
 }
 
+void Presentation::closeWindow() {
+    glfwSetWindowShouldClose(this->window, true);
+}
+
 Presentation::~Presentation()
 {
     this->setup->device.destroySwapchainKHR(this->swapchain.handle);

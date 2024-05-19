@@ -335,10 +335,10 @@ void run() {
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
 	printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
-	while (presentation->windowIsOpen()) {
+	for (int i = 0; i < 1000 && presentation->windowIsOpen(); i++) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle += 30. * deltaTime;
+		angle = 360./1000. * (float)i;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
 		auto cameraPosition = glm::vec4(2.2f, 2.2f, 1.0f, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
@@ -347,7 +347,6 @@ void run() {
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
-		//printf("%.2f\n", 1 / deltaTime);
 		previousTime = currentTime;
 
 		auto& timelineTracker = timelineTrackers[iterationTracker];
@@ -417,7 +416,7 @@ void run() {
 
 		auto centerTile = calcTile(OUTER_RADIUS, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(.0, resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
+		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
@@ -452,6 +451,8 @@ void run() {
 	}
 	printf("\n");
 	setup->device.waitIdle();
+	presentation->closeWindow();
+
 	setup->device.destroyQueryPool(queryPool);
 }
 
