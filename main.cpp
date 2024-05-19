@@ -222,12 +222,12 @@ void run() {
 		.type = vk::DescriptorType::eStorageBuffer,
 		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
-	Descriptor partialResultDescriptor{
-		.set = 0,
-		.binding = 9,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
-	};
+	//Descriptor partialResultDescriptor{
+	//	.set = 0,
+	//	.binding = 9,
+	//	.type = vk::DescriptorType::eStorageBuffer,
+	//	.stagesUsed = vk::ShaderStageFlagBits::eCompute
+	//};
 
 	auto sceneSet = DescriptorSetBuilder(setup)
 		.addBinding(vertexBufferDescriptor)
@@ -248,7 +248,7 @@ void run() {
 	std::shared_ptr<BufferExternal> inputBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> albedoBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> normalBuffers[FRAMES_IN_FLIGHT];
-	std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
+	//std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> resultBuffers[FRAMES_IN_FLIGHT];
 	auto rayTracingSetBuilder = DescriptorSetBuilder(setup)
 		.addBinding(bvhDescriptor)
@@ -257,8 +257,8 @@ void run() {
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor)
-		.addBinding(foveatedRangesDescriptor)
-		.addBinding(partialResultDescriptor);
+		.addBinding(foveatedRangesDescriptor);
+		//.addBinding(partialResultDescriptor);
 
 	auto foveatedRangeBuffer = BufferBuilder(setup)
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
@@ -272,7 +272,7 @@ void run() {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
 		normalBuffers[i] = imageArrayBuilder.buildExternal();
-		partialResultBuffers[i] = imageArrayBuilder.buildExternal();
+		//partialResultBuffers[i] = imageArrayBuilder.buildExternal();
 		resultBuffers[i] = imageArrayBuilder.buildExternal();
 
 		rayTracingSets[i] = rayTracingSetBuilder.build();
@@ -281,7 +281,7 @@ void run() {
 		rayTracingSets[i]->updateDescriptor(rgbDescriptor, inputBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
-		rayTracingSets[i]->updateDescriptor(partialResultDescriptor, partialResultBuffers[i]);
+		//rayTracingSets[i]->updateDescriptor(partialResultDescriptor, partialResultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(foveatedRangesDescriptor, foveatedRangeBuffer);
 	}
@@ -302,7 +302,7 @@ void run() {
 		.build();
 
 	auto bufferToImage = createComputePipeline(setup, "./shaders/buffer_to_image.spv", { rayTracingSets[0]->layout}, {});
-	auto imageBlend = createComputePipeline(setup, "./shaders/image_blend.spv", { rayTracingSets[0]->layout }, {});
+	//auto imageBlend = createComputePipeline(setup, "./shaders/image_blend.spv", { rayTracingSets[0]->layout }, {});
 
 	std::shared_ptr<Semaphore> imageReadySemaphores[FRAMES_IN_FLIGHT];
 	std::shared_ptr<Semaphore> renderFinishedSemaphores[FRAMES_IN_FLIGHT];
@@ -366,7 +366,7 @@ void run() {
 		auto& inputBuffer = inputBuffers[iterationTracker];
 		auto& albedoBuffer = albedoBuffers[iterationTracker];
 		auto& normalBuffer = normalBuffers[iterationTracker];
-		auto& partialResultBuffer = partialResultBuffers[iterationTracker];
+		//auto& partialResultBuffer = partialResultBuffers[iterationTracker];
 		auto& resultBuffer = resultBuffers[iterationTracker];
 
 		iterationTracker = (iterationTracker + 1) % FRAMES_IN_FLIGHT;
@@ -403,22 +403,13 @@ void run() {
 		rayTracingBuffer->submit();
 
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
+		auto centerTile = calcTile(INNER_RADIUS, false);
 		partialDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		partialDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
-		
-		blendImageBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
-		blendImageBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
-		blendImageBuffer->begin();
-		//blendImageBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eTopOfPipe, queryPool, queryTracker++);
-		blendImageBuffer->handle.bindPipeline(vk::PipelineBindPoint::eCompute, imageBlend->handle);
-		blendImageBuffer->handle.bindDescriptorSets(vk::PipelineBindPoint::eCompute, imageBlend->layout, 0, { rayTracingSet->handle }, { 0 });
-		blendImageBuffer->handle.dispatch(ceil((float)WIDTH / 16.), ceil((float)HEIGHT / 16.), 1);
-		//blendImageBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
-		blendImageBuffer->submit();
-
-		auto centerTile = calcTile(OUTER_RADIUS, true);
+		partialDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker + 1);
+		fullDenoiser->run(P, inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, centerTile);
+		fullDenoiser->run(0., resultBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);

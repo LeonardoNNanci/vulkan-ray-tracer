@@ -42,7 +42,7 @@ float calcRatio(ivec2 pixel){
         return outerRatio;
 
     float ratio = (dist - innerRadius) / (outerRadius - innerRadius);
-    ratio = pow(ratio, 1);
+    ratio = pow(ratio, 2);
     ratio *= (outerRatio - innerRatio);
     ratio += innerRatio;
     return ratio;
