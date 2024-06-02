@@ -64,10 +64,10 @@ std::vector<std::pair<glm::ivec2, glm::ivec2>> calcTiles(float innerRadius, floa
 
 Model3D squareModel {
 	.vertices = {
-		{{ -1., 1.,  0., 0.5 }},
-		{{ 1., 1.,  0., 0.5 }},
-		{{ -1., -1.,  0., 0.5 }},
-		{{ 1., -1.,  0., 0.5 }}},
+		{{ -1., 1.,  0., 1 }},
+		{{ 1., 1.,  0., 1 }},
+		{{ -1., -1.,  0., 1 }},
+		{{ 1., -1.,  0., 1 }}},
 	.indices = {
 		2, 0, 1, //floor
 		3, 2, 1}
@@ -137,9 +137,9 @@ void run() {
 	//};
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
-	auto dragonModel = FileReader().readPLY("C:\\Users\\leoga\\Desktop\\TCC\\models\\dragon_vrip.ply");
+	auto model = FileReader().readPLY("./models/thai_statuette.ply", true);
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
-	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
+	Instance main_model(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., 0, 0.)), 0);
 	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
 	Instance left(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -0.5, 0.5)), 0);
 	Instance right(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 0.5, 0.5)), 0);
@@ -154,8 +154,8 @@ void run() {
 			.addInstance(right)
 			.addInstance(back)
 			.addInstance(front)
-			.addModel(dragonModel)
-			.addInstance(dragon)
+			.addModel(model)
+			.addInstance(main_model)
 			.build();
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
@@ -257,7 +257,7 @@ void run() {
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor);
-		//.addBinding(foveatedRangesDescriptor)
+		//.addBinding(foveatedRangesDescriptor);
 		//.addBinding(partialResultDescriptor);
 
 	//auto foveatedRangeBuffer = BufferBuilder(setup)
@@ -402,6 +402,7 @@ void run() {
 		//rayTracingBuffer->handle.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, queryPool, queryTracker++);
 		rayTracingBuffer->submit();
 
+		//auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		//partialDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
 		//partialDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 		
@@ -461,12 +462,17 @@ void run() {
 int main(int argc, char* argv[]) {
 	if(argc < 6)
 	{
-		std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT" << std::endl;
+		std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT INNER_RADUIS OUTER_RADIUS P" << std::endl;
 		return -1;
 	}
 
 	WIDTH = std::atoi(argv[1]);
 	HEIGHT = std::atoi(argv[2]);
+	INNER_RADIUS = std::atoi(argv[3]);
+	OUTER_RADIUS = std::atoi(argv[4]);
+	P = std::atof(argv[5]);
+
+	ranges = { {1., 0., (float)INNER_RADIUS}, {(float)1. / P, (float)OUTER_RADIUS, (float)WIDTH} };
 
 	gazePoint = { WIDTH / 2, HEIGHT / 2 };
 
