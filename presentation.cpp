@@ -96,7 +96,7 @@ Swapchain PresentationBuilder::createSwapchain()
         .imageSharingMode = vk::SharingMode::eExclusive,
         .queueFamilyIndexCount = 1,
         .pQueueFamilyIndices = &this->setup->graphicsQueue.familyIndex,
-        .presentMode = vk::PresentModeKHR::eFifo,
+        .presentMode = vk::PresentModeKHR::eImmediate,
         .clipped = vk::True
     };
 
