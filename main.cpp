@@ -64,10 +64,10 @@ std::vector<std::pair<glm::ivec2, glm::ivec2>> calcTiles(float innerRadius, floa
 
 Model3D squareModel {
 	.vertices = {
-		{{ -1., 1.,  0., 0.5 }},
-		{{ 1., 1.,  0., 0.5 }},
-		{{ -1., -1.,  0., 0.5 }},
-		{{ 1., -1.,  0., 0.5 }}},
+		{{ -1., 1.,  0., 1 }},
+		{{ 1., 1.,  0., 1 }},
+		{{ -1., -1.,  0., 1 }},
+		{{ 1., -1.,  0., 1 }}},
 	.indices = {
 		2, 0, 1, //floor
 		3, 2, 1}
@@ -137,9 +137,9 @@ void run() {
 	//};
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
-	auto dragonModel = FileReader().readPLY("C:\\Users\\leoga\\Desktop\\TCC\\models\\dragon_vrip.ply");
+	auto model = FileReader().readPLY("./models/thai_statuette.ply", true);
 	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
-	Instance dragon(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., -.054, 0.)), 0);
+	Instance main_model(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., 0, 0.)), 0);
 	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
 	Instance left(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -0.5, 0.5)), 0);
 	Instance right(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 0.5, 0.5)), 0);
@@ -154,8 +154,8 @@ void run() {
 			.addInstance(right)
 			.addInstance(back)
 			.addInstance(front)
-			.addModel(dragonModel)
-			.addInstance(dragon)
+			.addModel(model)
+			.addInstance(main_model)
 			.build();
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
