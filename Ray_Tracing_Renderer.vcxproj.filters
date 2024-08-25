@@ -67,6 +67,9 @@
     <None Include="shaders\raytrace.rgen" />
     <None Include="shaders\wavefront.glsl" />
     <None Include="raycommon.glsl" />
+    <None Include="..\..\..\Downloads\main1-sponza\Main.1_Sponza\NewSponza_Main_glTF_003.bin">
+      <Filter>Arquivos de Recurso</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaders\host_device.h">

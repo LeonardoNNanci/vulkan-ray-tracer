@@ -98,6 +98,7 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
     auto bottomLevelStructureBuffer = BufferBuilder(this->setup)
         .setCommandBuffer(this->commandBuffer)
         .setSize(buildSizeInfo.accelerationStructureSize)
+        .setUsage(vk::BufferUsageFlagBits::eShaderDeviceAddress)
         .setUsage(vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR)
         .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
         .build();

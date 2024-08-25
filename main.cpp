@@ -137,26 +137,8 @@ void run() {
 	//};
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
-	auto model = FileReader().readPLY("./models/thai_statuette.ply", true);
-	Instance ground(glm::scale(glm::rotate(glm::mat4(1.), glm::pi<glm::float32>(), glm::vec3(0., 1., 0.)), glm::vec3(10.)), 0);
-	Instance main_model(glm::translate(glm::rotate(glm::rotate(glm::scale(glm::identity<glm::mat4>(), glm::vec3(1.5)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::float32{ -0.75 }, glm::vec3(0., 1., 0.)), glm::vec3(0., 0, 0.)), 0);
-	Instance light(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10)), -glm::pi<glm::float32>(), glm::vec3(1., 1., 0.)), glm::vec3(0., 0., -0.5)), 1);
-	Instance left(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., -0.5, 0.5)), 0);
-	Instance right(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(1., 0., 0.)), glm::vec3(0., 0.5, 0.5)), 0);
-	Instance front(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), -glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(0.5, 0., 0.5)), 0);
-	Instance back(glm::translate(glm::rotate(glm::scale(glm::mat4(1.), glm::vec3(10.)), glm::pi<glm::float32>() / 2, glm::vec3(0., 1., 0.)), glm::vec3(-0.5, 0., 0.5)), 0);
 
-	auto scene = SceneBuilder(setup, commandPool->createCommandBuffer())
-			.addModel(squareModel)
-			.addInstance(light)
-			.addInstance(ground)
-			.addInstance(left)
-			.addInstance(right)
-			.addInstance(back)
-			.addInstance(front)
-			.addModel(model)
-			.addInstance(main_model)
-			.build();
+	auto scene = FileReader().readGLTF("models\\Bunnies\\Bunnies.gltf", SceneBuilder(setup, commandPool->createCommandBuffer()));
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
@@ -337,15 +319,15 @@ void run() {
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
 	//printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
-	for (int i = 0; i < 1000 && presentation->windowIsOpen(); i++) {
+	for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle = 360./1000. * (float)i;
+		angle = 360./1000. * i;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(2.2f, 2.2f, 1.0f, 1.0f);
+		auto cameraPosition = glm::vec4(.9, 0., -.5, 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
-		pc.data.view = glm::rotate(glm::lookAt((glm::vec3(cameraPosition)), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
+		pc.data.view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 0.f), glm::vec3(0.0f, 0.0f, 1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
@@ -419,7 +401,7 @@ void run() {
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		//auto centerTile = calcTile(OUTER_RADIUS, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(1., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
@@ -460,17 +442,17 @@ void run() {
 }
 
 int main(int argc, char* argv[]) {
-	if(argc < 6)
-	{
-		std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT INNER_RADUIS OUTER_RADIUS P" << std::endl;
-		return -1;
-	}
+	//if(argc < 6)
+	//{
+	//	std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT INNER_RADUIS OUTER_RADIUS P" << std::endl;
+	//	return -1;
+	//}
 
-	WIDTH = std::atoi(argv[1]);
-	HEIGHT = std::atoi(argv[2]);
-	INNER_RADIUS = std::atoi(argv[3]);
-	OUTER_RADIUS = std::atoi(argv[4]);
-	P = std::atof(argv[5]);
+	WIDTH = 900;
+	HEIGHT = 900;
+	INNER_RADIUS = 1500;
+	OUTER_RADIUS = 1900;
+	//P = std::atof(argv[5]);
 
 	ranges = { {1., 0., (float)INNER_RADIUS}, {(float)1. / P, (float)OUTER_RADIUS, (float)WIDTH} };
 

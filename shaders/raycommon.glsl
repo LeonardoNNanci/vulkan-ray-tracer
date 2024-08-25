@@ -14,6 +14,7 @@ struct DenoiserInfo{
 
 struct Vertex{
 	vec4 pos;
+	vec3 normal;
 };
 
 struct ModelDescription {

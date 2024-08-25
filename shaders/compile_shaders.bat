@@ -1,6 +1,6 @@
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 raytrace.rgen -o raygen.spv
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 raytrace.rmiss -o miss.spv
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 raytrace.rchit -o closesthit.spv
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 light.rchit -o light.spv
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 image_blend.comp -o image_blend.spv
-"C:/Users/leoga/Documents/Visual Studio 2022/Libraries/VulkanSDK/Bin/glslc.exe" --target-env=vulkan1.3 buffer_to_image.comp -o buffer_to_image.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/raytrace.rgen -o shaders/raygen.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/raytrace.rmiss -o shaders/miss.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/raytrace.rchit -o shaders/closesthit.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/light.rchit -o shaders/light.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/image_blend.comp -o shaders/image_blend.spv
+%VULKAN_SDK%/Bin/glslc.exe --target-env=vulkan1.3 shaders/buffer_to_image.comp -o shaders/buffer_to_image.spv

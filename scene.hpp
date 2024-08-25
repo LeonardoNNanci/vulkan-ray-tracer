@@ -10,6 +10,8 @@
 struct Vertex {
 	alignas(16) glm::vec4 pos;
 
+	alignas(16) glm::vec3 normal;
+
 	static vk::VertexInputBindingDescription getBindingDescription();
 
 	static std::array<vk::VertexInputAttributeDescription, 1> getAttributeDescriptions();
@@ -29,7 +31,7 @@ public:
 	uint32_t hitShaderOffset;
 	uint32_t modelId;
 
-	Instance(glm::mat4 transform, uint32_t hitShaderOffset);
+	Instance(uint32_t modelId, glm::mat4 transform, uint32_t hitShaderOffset);
 };
 
 class Scene {

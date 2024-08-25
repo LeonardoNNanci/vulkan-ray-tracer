@@ -92,6 +92,10 @@ PipelineBuilder PipelineBuilder::addShader(const std::string& shaderFileName, vk
         anyCount++;
         break;
 
+    case vk::ShaderStageFlagBits::eRaygenKHR:
+        shaderGroupType = vk::RayTracingShaderGroupTypeKHR::eGeneral;
+        break;
+
     default:
         break;
     }

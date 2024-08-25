@@ -17,10 +17,10 @@ std::array<vk::VertexInputAttributeDescription, 1> Vertex::getAttributeDescripti
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, pos)
     };
-    return { posDescription };
+    return { posDescription,  };
 }
 
-Instance::Instance(glm::mat4 transform, uint32_t hitShaderOffset) : transform(transform), hitShaderOffset(hitShaderOffset) {}
+Instance::Instance(uint32_t modelId, glm::mat4 transform, uint32_t hitShaderOffset) : modelId(modelId), transform(transform), hitShaderOffset(hitShaderOffset) {}
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer) : IHasSetup(setup), commandBuffer(commandBuffer) {}
 
@@ -32,7 +32,6 @@ SceneBuilder SceneBuilder::addModel(Model3D model)
 
 SceneBuilder SceneBuilder::addInstance(Instance instance)
 {
-    instance.modelId = this->models.size() - 1;
     this->instances.push_back(instance);
     return *this;
 }

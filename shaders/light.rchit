@@ -25,21 +25,22 @@ void main()
 	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
 	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
 	int i3 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
-	vec3 p1 = vertexBuffer.v[desc.vertexStride + i1].pos.xyz;
-	vec3 p2 = vertexBuffer.v[desc.vertexStride + i2].pos.xyz;
-	vec3 p3 = vertexBuffer.v[desc.vertexStride + i3].pos.xyz;
-	vec3 objectNormal = normalize(cross((p3 - p2), (p1 - p2)));
-    
-    vec3 worldNormal = normalize(gl_ObjectToWorldEXT * vec4(objectNormal, 0.));
-    if(prd.depth == 0) {
-        vec3 cameraNormal = (view * vec4(-worldNormal, 0.)).xyz;
-        cameraNormal = normalize(cameraNormal.xyz);
-        cameraNormal.g = -cameraNormal.g;
+	Vertex v1 = vertexBuffer.v[desc.vertexStride + i1];
+	Vertex v2 = vertexBuffer.v[desc.vertexStride + i2];
+	Vertex v3 = vertexBuffer.v[desc.vertexStride + i3];
+	vec3 objectNormal = normalize((v1.normal + v2.normal + v3.normal) / 3);
 
-        uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
+    // pre-pass
+    if(prd.fillGuideLayers){
+        vec3 worldNormal = normalize(mat3(gl_ObjectToWorldEXT) * objectNormal);
+        vec3 cameraNormal = normalize(mat3(view) * worldNormal);
+            cameraNormal.g = -cameraNormal.g;
 
-        prd.albedo = vec3(1.);
-        prd.normal = cameraNormal;
+            uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
+
+            prd.albedo = vec3(9.);
+            prd.normal = cameraNormal;
+            return;
     }
     prd.hitValue = vec3(1.);
 }

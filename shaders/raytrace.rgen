@@ -129,7 +129,7 @@ void main()
 
     prd.depth = 0;
     int maxDepth = 32;
-    int sampleCount = 8;
+    int sampleCount = 1;
     vec3 finalColor = vec3(0.);
     for(int i = 0; i < sampleCount; i++){
         finalColor += rayTrace(pixel, i);
