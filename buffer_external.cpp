@@ -131,7 +131,7 @@ vk::DeviceMemory BufferExternalBuilder::createMemory()
 	vk::MemoryAllocateInfo allocInfo{
 		.pNext = &exportInfo,
 		.allocationSize = memRequirements.size,
-		.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits),
+		.memoryTypeIndex = this->setup->findMemoryType(memRequirements.memoryTypeBits, this->properties),
 	};
 	return this->setup->device.allocateMemory(allocInfo);
 }

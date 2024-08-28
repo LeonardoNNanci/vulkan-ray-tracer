@@ -24,6 +24,8 @@ public:
 
 	Queue graphicsQueue;
 
+	uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
+
 	~Setup();
 };
 

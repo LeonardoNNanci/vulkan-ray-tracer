@@ -138,7 +138,7 @@ void run() {
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
 
-	auto scene = FileReader().readGLTF("models\\Bunnies\\Bunnies.gltf", SceneBuilder(setup, commandPool->createCommandBuffer()));
+	auto scene = FileReader().readGLTF("models\\Sponza\\", "Sponza.gltf", SceneBuilder(setup, commandPool->createCommandBuffer())).build();
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
@@ -324,10 +324,10 @@ void run() {
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle = 360./1000. * i;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(.9, 0., -.5, 1.0f);
+		auto cameraPosition = glm::vec4(1, 1, 1., 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
 		pc.data.projInv = glm::inverse(pc.data.proj);
-		pc.data.view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 0.f), glm::vec3(0.0f, 0.0f, 1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
+		pc.data.view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 0.0f, 1.f), glm::vec3(0.0f, 0.0f, -1.0f)), glm::radians(angle), glm::vec3(0., 0., 1.));
 		pc.data.viewInv = glm::inverse(pc.data.view);
 		pc.data = pc.data;
 
@@ -401,7 +401,7 @@ void run() {
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		//auto centerTile = calcTile(OUTER_RADIUS, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(1., normalBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);

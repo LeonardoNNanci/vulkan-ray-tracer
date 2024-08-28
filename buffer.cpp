@@ -65,17 +65,9 @@ vk::DeviceMemory BufferBuilder::createMemory() {
 	vk::MemoryAllocateInfo allocInfo{
 		.pNext = &memFlagsInfo,
 		.allocationSize = memRequirements.size,
-		.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits),
+		.memoryTypeIndex = this->setup->findMemoryType(memRequirements.memoryTypeBits, this->properties),
 	};
 	return this->setup->device.allocateMemory(allocInfo);
-}
-
-uint32_t BufferBuilder::findMemoryType(uint32_t typeFilter) {
-	vk::PhysicalDeviceMemoryProperties memProperties = this->setup->physicalDevice.getMemoryProperties();
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
-			return i;
-	throw std::runtime_error("Could not find suitable memory type!");
 }
 
 Buffer::Buffer(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
@@ -110,13 +102,14 @@ void Buffer::copyBuffer(std::shared_ptr<Buffer> source) {
 	commandBuffer->queue.handle.waitIdle();
 }
 
-template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
+template void Buffer::fill<Range>(std::vector<Range> data);
 template void Buffer::fill<Vertex>(std::vector<Vertex> data);
-template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
-template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
+template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
+template void Buffer::fill<unsigned char>(std::vector<unsigned char> data);
 template void Buffer::fill<ModelDescription>(std::vector<ModelDescription> data);
 template void Buffer::fill<std::pair<int, int>>(std::vector<std::pair<int, int>> data);
-template void Buffer::fill<Range>(std::vector<Range> data);
+template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
+template void Buffer::fill<vk::AccelerationStructureInstanceKHR>(std::vector<vk::AccelerationStructureInstanceKHR> data);
 
 template <typename T>
 void Buffer::fill(std::vector<T> data) {

@@ -126,6 +126,14 @@ vk::Queue SetupBuilder::getQueue(uint32_t familyIndex)
     return this->setup->device.getQueue(familyIndex, 0);
 }
 
+uint32_t Setup::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties){
+    vk::PhysicalDeviceMemoryProperties memProperties = this->physicalDevice.getMemoryProperties();
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            return i;
+    throw std::runtime_error("Could not find suitable memory type!");
+}
+
 Setup::~Setup() {
     this->device.destroy();
     this->instance.destroy();

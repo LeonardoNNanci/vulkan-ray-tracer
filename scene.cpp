@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "scene.hpp"
+#include "image.hpp"
 
 vk::VertexInputBindingDescription Vertex::getBindingDescription() {
     return {
@@ -36,11 +37,41 @@ SceneBuilder SceneBuilder::addInstance(Instance instance)
     return *this;
 }
 
+SceneBuilder SceneBuilder::addTexture(Texture texture)
+{
+    this->textures.push_back(texture);
+    return *this;
+}
+
+SceneBuilder SceneBuilder::addMaterial(Material material)
+{
+    this->materials.push_back(material);
+    return *this;
+}
+
+SceneBuilder SceneBuilder::addSampler(Sampler sampler)
+{
+    this->samplers.push_back(sampler);
+    return *this;
+}
+
+SceneBuilder SceneBuilder::addImage(std::string fileName)
+{
+    this->imageFiles.push_back(fileName);
+    return *this;
+}
+
 std::shared_ptr<Scene> SceneBuilder::build()
 {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<ModelDescription> objectDescriptions;
+
+    std::vector <std::shared_ptr<Image>> images(imageFiles.size());
+
+    for (int i = 0; i < images.size(); i++) {
+        images[i] = std::make_shared<Image>(setup, commandBuffer, imageFiles[i]);
+    }
 
     for (auto& model : this->models) {
         objectDescriptions.push_back({

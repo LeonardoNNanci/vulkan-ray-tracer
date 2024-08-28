@@ -11,6 +11,8 @@ public:
 
 	Model3D readPLY(const std::string filename, bool clockwise);
 
-	std::shared_ptr<Scene> readGLTF(const std::string filename, SceneBuilder sceneBuilder);
+	SceneBuilder readGLTF(const std::string folder, const std::string filename, SceneBuilder sceneBuilder);
+
+	std::tuple<std::vector<unsigned char>, uint32_t, uint32_t> readImage(std::string filename);
 };
 

@@ -28,9 +28,10 @@ public:
 
 	~Buffer();
 
+	void copyBuffer(std::shared_ptr<Buffer> source);
+
 private:
 	vk::DeviceAddress address = NULL;
-	void copyBuffer(std::shared_ptr<Buffer> other);
 };
 
 class BufferBuilder : public Builder <std::shared_ptr<Buffer>> , protected IHasSetup{
@@ -61,6 +62,4 @@ protected:
 	virtual vk::Buffer createBuffer();
 
 	virtual vk::DeviceMemory createMemory();
-
-	uint32_t findMemoryType(uint32_t typeFilter);
 };

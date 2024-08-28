@@ -17,6 +17,21 @@ struct Vertex {
 	static std::array<vk::VertexInputAttributeDescription, 1> getAttributeDescriptions();
 };
 
+class Material {
+public:
+	double metalicFactor;
+	double roughnessFactor;
+	glm::vec4 baseColor;
+
+	int colorTexture;
+	int metalicRoughnessTexture;
+	int normalTexture;
+	int occlusionTexture;
+	int emissiveTexture;
+
+	bool doubleSided;
+};
+
 class Model3D {
 public:
 	uint32_t vertexOffset;
@@ -34,6 +49,18 @@ public:
 	Instance(uint32_t modelId, glm::mat4 transform, uint32_t hitShaderOffset);
 };
 
+class Texture {
+public:
+	int image;
+	int sampler;
+};
+
+class Sampler {
+public:
+	vk::Filter magFilter;
+	vk::Filter minFilter;
+};
+
 class Scene {
 public:
 	std::vector<Model3D> models;
@@ -41,6 +68,10 @@ public:
 	std::shared_ptr<Buffer> vertexBuffer;
 	std::shared_ptr<Buffer> indexBuffer;
 	std::shared_ptr<Buffer> objectDescriptionBuffer;
+
+	std::vector<Material> materials;
+	std::vector<Texture> textures;
+	std::vector<Sampler> samplers;
 };
 
 struct ModelDescription {
@@ -56,10 +87,22 @@ public:
 
 	SceneBuilder addInstance(Instance instance);
 
+	SceneBuilder addTexture(Texture texture);
+
+	SceneBuilder addMaterial(Material material);
+
+	SceneBuilder addSampler(Sampler sampler);
+
+	SceneBuilder addImage(std::string fileName);
+
 	std::shared_ptr<Scene> build();
 
 private:
 	std::vector<Model3D> models;
 	std::vector <Instance> instances;
+	std::vector<Material> materials;
+	std::vector<Texture> textures;
+	std::vector<Sampler> samplers;
+	std::vector<std::string> imageFiles;
 	std::shared_ptr<CommandBuffer> commandBuffer;
 };
