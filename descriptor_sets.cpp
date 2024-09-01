@@ -5,7 +5,7 @@
 DescriptorSet::DescriptorSet(std::shared_ptr<Setup> setup, std::shared_ptr<DescriptorPool> descriptorPool)
     : IHasSetup(setup), descriptorPool(descriptorPool) {}
 
-void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Buffer> buffer) {
+void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::shared_ptr<Buffer> buffer) {
     vk::DescriptorBufferInfo bufferInfo{
         .buffer = buffer->handle,
         .offset = buffer->offset,
@@ -13,30 +13,30 @@ void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Buff
     };
     vk::WriteDescriptorSet writeBuffer{
         .dstSet = this->handle,
-        .dstBinding = descriptor.binding,
+        .dstBinding = binding.binding,
         .descriptorCount = 1,
-        .descriptorType = descriptor.type,
+        .descriptorType = binding.descriptorType,
         .pBufferInfo = &bufferInfo
     };
     this->setup->device.updateDescriptorSets({ writeBuffer }, {});
 }
 
-void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Image> image) {
+void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::shared_ptr<Image> image) {
     vk::DescriptorImageInfo imageInfo{
         .imageView = image->view,
         .imageLayout = image->layout,
     };
     vk::WriteDescriptorSet writeImage{
         .dstSet = this->handle,
-        .dstBinding = descriptor.binding,
+        .dstBinding = binding.binding,
         .descriptorCount = 1,
-        .descriptorType = descriptor.type,
+        .descriptorType = binding.descriptorType,
         .pImageInfo = &imageInfo
     };
     this->setup->device.updateDescriptorSets({ writeImage }, {});
 }
 
-void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<AccelerationStructure> accelerationStructure) {
+void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::shared_ptr<AccelerationStructure> accelerationStructure) {
     vk::WriteDescriptorSetAccelerationStructureKHR accelerationData{
         .accelerationStructureCount = 1,
         .pAccelerationStructures = &accelerationStructure->topLevel->handle,
@@ -48,12 +48,32 @@ void DescriptorSet::updateDescriptor(Descriptor descriptor, std::shared_ptr<Acce
     vk::WriteDescriptorSet writeAccelerationStructure{
         .pNext = &accelerationData,
         .dstSet = this->handle,
-        .dstBinding = descriptor.binding,
+        .dstBinding = binding.binding,
         .descriptorCount = 1,
-        .descriptorType = descriptor.type,
+        .descriptorType = binding.descriptorType,
         .pBufferInfo = &accelerationBufferInfo
     };
     this->setup->device.updateDescriptorSets({ writeAccelerationStructure }, {});
+}
+
+void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::vector<TexturePointers> textures) {
+    std::vector<vk::DescriptorImageInfo> imageInfos;
+    for (auto texture : textures) {
+        vk::DescriptorImageInfo imageInfo{
+            .sampler = texture.sampler->handle,
+            .imageView = texture.image->view,
+            .imageLayout = texture.image->layout,
+        };
+        imageInfos.push_back(imageInfo);
+    }
+    vk::WriteDescriptorSet writeTextures{
+        .dstSet = this->handle,
+        .dstBinding = binding.binding,
+        .descriptorType = binding.descriptorType,
+    };
+    writeTextures.setImageInfo(imageInfos);
+    
+    this->setup->device.updateDescriptorSets({ writeTextures }, {});
 }
 
 
@@ -80,43 +100,65 @@ DescriptorSetBuilder::DescriptorSetBuilder(std::shared_ptr<Setup> setup) : IHasS
 
 std::shared_ptr<DescriptorSet> DescriptorSetBuilder::build() {
     auto pool = this->createDescriptorPool();
-    vk::DescriptorSetLayout layout;
-    
-    // declare bindings
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
-    bindings.reserve(this->descriptors.size());
-    for (auto descriptor : this->descriptors){
-        vk::DescriptorSetLayoutBinding binding{
-            .binding = descriptor.binding,
-            .descriptorType = descriptor.type,
-            .descriptorCount = 1,
-            .stageFlags = descriptor.stagesUsed
-        };
-        bindings.emplace_back(binding);
-    }
+
+    vk::DescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{
+        .bindingCount = static_cast<uint32_t>(this->bindingFlags.size())
+    };
+    flagsInfo.setBindingFlags(this->bindingFlags);
 
     // create layout
-    vk::DescriptorSetLayoutCreateInfo layoutInfo{};
+    vk::DescriptorSetLayoutCreateInfo layoutInfo{
+        .pNext = &flagsInfo
+    };
     layoutInfo.setBindings(bindings);
-    layout = this->setup->device.createDescriptorSetLayout(layoutInfo);
+    auto layout = this->setup->device.createDescriptorSetLayout(layoutInfo);
 
     // allocate sets
     vk::DescriptorSetAllocateInfo setInfo{
         .descriptorPool = pool->handle
     };
     setInfo.setSetLayouts(layout);
+
+    // if has variable descriptor count
+    // variables here for correct scoping
+    uint32_t maxDescriptors = 0;
+    vk::DescriptorSetVariableDescriptorCountAllocateInfo setCounts{
+        .descriptorSetCount = 1,
+        .pDescriptorCounts = &maxDescriptors 
+    };
+    if (hasVariableDescriptorCount) {
+        for (auto binding : this->bindings)
+            maxDescriptors = std::max<uint32_t>(maxDescriptors, binding.descriptorCount);
+        setInfo.setPNext(&setCounts);
+    }
+
     auto handle = this->setup->device.allocateDescriptorSets(setInfo)[0];
 
     // create objects
     auto set = std::make_shared<DescriptorSet>(this->setup, pool);
     set->handle = handle;
     set->layout = layout;
+    set->index = this->index;
 
     return set;
 }
 
-DescriptorSetBuilder DescriptorSetBuilder::addBinding(Descriptor descriptor) {
-    this->descriptors.push_back(descriptor);
+DescriptorSetBuilder DescriptorSetBuilder::addBinding(vk::DescriptorSetLayoutBinding binding) {
+    this->bindings.push_back(binding);
+
+    vk::DescriptorBindingFlags flags;
+    if (binding.descriptorCount > 1) {
+        flags = vk::DescriptorBindingFlagBits::eVariableDescriptorCount | vk::DescriptorBindingFlagBits::ePartiallyBound;
+        this->hasVariableDescriptorCount = true;
+    }
+    this->bindingFlags.push_back(flags);
+
+    return *this;
+}
+
+DescriptorSetBuilder DescriptorSetBuilder::setIndex(uint32_t index)
+{
+    this->index = index;
     return *this;
 }
 

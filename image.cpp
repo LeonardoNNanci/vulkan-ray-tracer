@@ -214,11 +214,10 @@ void Image::clearBarrier(std::shared_ptr<CommandBuffer> commandBuffer) {
 }
 
 void Image::layoutChangeBarrier(std::shared_ptr<CommandBuffer> commandBuffer, vk::ImageLayout newLayout) {
-	this->layout = newLayout;
 	vk::ImageMemoryBarrier imageBarrier{
 		.srcAccessMask = vk::AccessFlagBits::eMemoryRead,
 		.dstAccessMask = vk::AccessFlagBits::eMemoryWrite,
-		.oldLayout = vk::ImageLayout::eUndefined,
+		.oldLayout = this->layout,
 		.newLayout = newLayout,
 		.srcQueueFamilyIndex = this->setup->graphicsQueue.familyIndex,
 		.dstQueueFamilyIndex = this->setup->graphicsQueue.familyIndex,
@@ -239,6 +238,8 @@ void Image::layoutChangeBarrier(std::shared_ptr<CommandBuffer> commandBuffer, vk
 		{},
 		{ imageBarrier }
 	);
+
+	this->layout = newLayout;
 }
 
 void Image::clear(std::shared_ptr<CommandBuffer> commandBuffer) {

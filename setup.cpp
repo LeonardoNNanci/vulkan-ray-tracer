@@ -60,6 +60,7 @@ vk::Device SetupBuilder::createDevice()
 
     vk::PhysicalDeviceProperties deviceProperties = this->setup->physicalDevice.getProperties();
     vk::PhysicalDeviceFeatures deviceFeatures = this->setup->physicalDevice.getFeatures();
+    deviceFeatures.samplerAnisotropy = vk::True;
 
     size_t count = 0;
     for (auto& required : this->extensions.deviceExtensions)
@@ -79,24 +80,21 @@ vk::Device SetupBuilder::createDevice()
         .pQueuePriorities = priorities
     };
 
-    vk::PhysicalDeviceHostQueryResetFeatures queryPoolFeatures{
-        .hostQueryReset = vk::True
-    };
-
-    vk::PhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures{
-        .pNext = &queryPoolFeatures,
-        .timelineSemaphore = vk::True
+    vk::PhysicalDeviceVulkan12Features vulkan12Features{
+        .shaderSampledImageArrayNonUniformIndexing = vk::True,
+        .descriptorBindingPartiallyBound = vk::True,
+        .descriptorBindingVariableDescriptorCount = vk::True,
+        .runtimeDescriptorArray = vk::True,
+        .hostQueryReset = vk::True,
+        .timelineSemaphore = vk::True,
+        .bufferDeviceAddress = vk::True,
     };
     vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures{
-        .pNext = &timelineSemaphoreFeatures,
+        .pNext = &vulkan12Features,
         .rayTracingPipeline = vk::True
     };
-    vk::PhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures{
-        .pNext = &rtPipelineFeatures,
-        .bufferDeviceAddress = vk::True
-    };
     vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationFeatures{
-        .pNext = &bufferAddressFeatures,
+        .pNext = &rtPipelineFeatures,
         .accelerationStructure = vk::True
     };
 
@@ -104,6 +102,7 @@ vk::Device SetupBuilder::createDevice()
     .pNext = &accelerationFeatures,
     .queueCreateInfoCount = 1,
     .pQueueCreateInfos = &queueInfo,
+    .pEnabledFeatures = &deviceFeatures
     };
     deviceInfo.setPEnabledExtensionNames(this->extensions.deviceExtensions);
 

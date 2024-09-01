@@ -1,7 +1,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include "scene.hpp"
-#include "image.hpp"
+#include "texture_sampler.hpp"
 
 vk::VertexInputBindingDescription Vertex::getBindingDescription() {
     return {
@@ -16,7 +16,7 @@ std::array<vk::VertexInputAttributeDescription, 1> Vertex::getAttributeDescripti
         .location = 0,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(Vertex, pos)
+        .offset = offsetof(Vertex, position)
     };
     return { posDescription,  };
 }
@@ -37,9 +37,9 @@ SceneBuilder SceneBuilder::addInstance(Instance instance)
     return *this;
 }
 
-SceneBuilder SceneBuilder::addTexture(Texture texture)
+SceneBuilder SceneBuilder::addTexture(TextureIndices texture)
 {
-    this->textures.push_back(texture);
+    this->textureIndices.push_back(texture);
     return *this;
 }
 
@@ -49,9 +49,9 @@ SceneBuilder SceneBuilder::addMaterial(Material material)
     return *this;
 }
 
-SceneBuilder SceneBuilder::addSampler(Sampler sampler)
+SceneBuilder SceneBuilder::addSampler(SamplerInfo sampler)
 {
-    this->samplers.push_back(sampler);
+    this->samplerInfos.push_back(sampler);
     return *this;
 }
 
@@ -68,15 +68,29 @@ std::shared_ptr<Scene> SceneBuilder::build()
     std::vector<ModelDescription> objectDescriptions;
 
     std::vector <std::shared_ptr<Image>> images(imageFiles.size());
+    std::vector <std::shared_ptr<Sampler>> samplers(samplerInfos.size());
+
+    std::vector <TexturePointers> texturePointers(textureIndices.size());
 
     for (int i = 0; i < images.size(); i++) {
         images[i] = std::make_shared<Image>(setup, commandBuffer, imageFiles[i]);
     }
 
+    for (int i = 0; i < samplerInfos.size(); i++) {
+        auto samplerInfo = samplerInfos[i];
+        samplers[i] = std::make_shared<Sampler>(setup, samplerInfo.magFilter, samplerInfo.minFilter);
+    }
+
+    for (int i = 0; i < textureIndices.size(); i++) {
+        texturePointers[i].image = images[textureIndices[i].imageIndex];
+        texturePointers[i].sampler = samplers[textureIndices[i].samplerIndex];
+    }
+
     for (auto& model : this->models) {
         objectDescriptions.push_back({
             .vertexStride = static_cast<uint32_t>(vertices.size()),
-            .indexStride = static_cast<uint32_t>(indices.size())
+            .indexStride = static_cast<uint32_t>(indices.size()),
+            .materialIndex = static_cast<uint32_t>(model.materialIndex)
         });
         model.vertexOffset = vertices.size();
         model.indexOffset = indices.size();
@@ -106,9 +120,17 @@ std::shared_ptr<Scene> SceneBuilder::build()
         .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
         .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
         .build();
+    auto materialBuffer = BufferBuilder(this->setup)
+        .setSize(this->materials.size() * sizeof(this->materials[0]))
+        .setCommandBuffer(this->commandBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+        .build();
+
     vertexBuffer->fill(vertices);
     indexBuffer->fill(indices);
     descriptionBuffer->fill(objectDescriptions);
+    materialBuffer->fill(this->materials);
 
     auto scene = std::make_shared<Scene>();
     scene->models = this->models;
@@ -116,6 +138,8 @@ std::shared_ptr<Scene> SceneBuilder::build()
     scene->vertexBuffer = vertexBuffer;
     scene->indexBuffer = indexBuffer;
     scene->objectDescriptionBuffer = descriptionBuffer;
+    scene->materialBuffer = materialBuffer;
+    scene->texturePointers = texturePointers;
 
     return scene;
 }

@@ -56,9 +56,9 @@ Model3D FileReader::readPLY(const std::string filename, bool clockwise = true)
     for (int i = 0; i < vertices.size(); i++) {
         auto& [x, y, z] = rawVertices[i];
         if (clockwise)
-            vertices[i].pos = glm::vec4(x / maxVal, y / maxVal, z / maxVal, 1.);
+            vertices[i].position = glm::vec4(x / maxVal, y / maxVal, z / maxVal, 1.);
         else
-            vertices[i].pos = glm::vec4(z / maxVal, y / maxVal, x / maxVal, 1.);
+            vertices[i].position = glm::vec4(z / maxVal, y / maxVal, x / maxVal, 1.);
     }
 
     std::vector<uint32_t> indices(3 * rawIndices.size());
@@ -126,7 +126,7 @@ private:
         for (auto samplerData : tmodel.samplers) {
             std::cout << "Sampler: " << samplerData.name << std::endl;
 
-            Sampler sampler{
+            SamplerInfo sampler{
                 .magFilter = filterMap[samplerData.magFilter],
                 .minFilter = filterMap[samplerData.minFilter]
             };
@@ -138,9 +138,9 @@ private:
     void loadTextures() {
         for (auto textureData : tmodel.textures) {
             std::cout << "Texture: " << textureData.name << std::endl;
-            Texture texture{
-                .image = textureData.source,
-                .sampler = textureData.sampler
+            TextureIndices texture{
+                .imageIndex = static_cast<uint32_t>(textureData.source),
+                .samplerIndex = static_cast<uint32_t>(textureData.sampler)
             };
             sceneBuilder.addTexture(texture);
         }
@@ -154,7 +154,11 @@ private:
             if(!baseColor.empty())
                 material.baseColor = { baseColor[0], baseColor[1], baseColor[2], baseColor[3] };
 
-            material.colorTexture = materialData.pbrMetallicRoughness.baseColorTexture.index;
+            auto textureIndex = materialData.pbrMetallicRoughness.baseColorTexture.index;
+            material.colorTexture = static_cast<uint32_t>(textureIndex);
+            //material.colorTexture.imageIndex = static_cast<uint32_t>(texture.source);
+            //material.colorTexture.samplerIndex = static_cast<uint32_t>(texture.sampler);
+
             material.metalicFactor = materialData.pbrMetallicRoughness.metallicFactor;
             material.roughnessFactor = materialData.pbrMetallicRoughness.roughnessFactor;
 
@@ -175,8 +179,9 @@ private:
 
                 loadPrimitivePositions(model, primitive);
                 loadPrimitiveNormals(model, primitive);
-
+                loadPrimitiveTextureCoordinates(model, primitive);
                 loadPrimitiveIndices(model, primitive, meshCount, primitiveCount);
+                model.materialIndex = static_cast<uint32_t>(primitive.material);
 
                 sceneBuilder.addModel(model);
                 meshPrimitives[meshCount].push_back(primitiveCount);
@@ -195,6 +200,7 @@ private:
             nodeStack.push({ node, glm::mat4(1.) });
         }
 
+        int i = 0;
         while (!nodeStack.empty()) {
             auto [node, parentTransform] = nodeStack.top();
             nodeStack.pop();
@@ -212,7 +218,7 @@ private:
 
             if (node.mesh >= 0)
                 for (auto primitiveIndex : meshPrimitives[node.mesh]) {
-                    Instance instance(primitiveIndex, transform, 1);
+                    Instance instance(primitiveIndex, transform, 0);
                     sceneBuilder.addInstance(instance);
                 }
 
@@ -245,7 +251,7 @@ private:
         auto stride = std::max((int)positionBufferView.byteStride, componentSize * numComponents);
         for (auto [i, p] = std::tuple{ 0, positionData }; i < positionAccessor.count; i++, p += stride) {
             std::memcpy(pos.data(), p, numComponents * componentSize);
-            model.vertices[i].pos = { pos[0], pos[2], -pos[1], 1. };
+            model.vertices[i].position = { pos[0], pos[2], -pos[1], 1. };
         }
     }
 
@@ -270,6 +276,30 @@ private:
         for (auto [i, p] = std::tuple{ 0, positionData }; i < normalAccessor.count; i++, p += stride) {
             std::memcpy(normal.data(), p, numComponents * componentSize);
             model.vertices[i].normal = { normal[0], normal[2], -normal[1] };
+        }
+    }
+
+    void loadPrimitiveTextureCoordinates(Model3D& model, tinygltf::Primitive primitive) {
+        auto p = primitive.attributes.find("TEXCOORD_0");
+        if (p == primitive.attributes.end())
+            return;
+
+        auto index = p->second;
+        auto accessor = tmodel.accessors[index];
+        auto bufferView = tmodel.bufferViews[accessor.bufferView];
+        auto buffer = tmodel.buffers[bufferView.buffer];
+        if (accessor.type != TINYGLTF_TYPE_VEC2)
+            return;
+
+        int numComponents = tinygltf::GetNumComponentsInType(accessor.type);
+        int componentSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
+        auto data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+
+        std::vector<float> normal(numComponents);
+        auto stride = std::max((int)bufferView.byteStride, componentSize * numComponents);
+        for (auto [i, p] = std::tuple{ 0, data }; i < accessor.count; i++, p += stride) {
+            std::memcpy(normal.data(), p, numComponents * componentSize);
+            model.vertices[i].textureCoordinates = { normal[0], normal[1] };
         }
     }
 
@@ -342,7 +372,7 @@ std::tuple<std::vector<unsigned char>, uint32_t, uint32_t> FileReader::readImage
     int imgDataSize = imgWidth * imgHeight * 4;
 
     std::vector<unsigned char> returnData(pixelData, pixelData + imgDataSize);
-
+    pixelData[0] = 111;
     stbi_image_free(pixelData);
 
     return {

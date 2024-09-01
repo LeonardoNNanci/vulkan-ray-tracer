@@ -104,7 +104,10 @@ void Buffer::copyBuffer(std::shared_ptr<Buffer> source) {
 
 template void Buffer::fill<Range>(std::vector<Range> data);
 template void Buffer::fill<Vertex>(std::vector<Vertex> data);
+template void Buffer::fill<Material>(std::vector<Material> data);
 template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
+template void Buffer::fill<vk::Image>(std::vector<vk::Image> data);
+template void Buffer::fill<vk::Sampler>(std::vector<vk::Sampler> data);
 template void Buffer::fill<unsigned char>(std::vector<unsigned char> data);
 template void Buffer::fill<ModelDescription>(std::vector<ModelDescription> data);
 template void Buffer::fill<std::pair<int, int>>(std::vector<std::pair<int, int>> data);

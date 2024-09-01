@@ -13,13 +13,15 @@ struct DenoiserInfo{
 };
 
 struct Vertex{
-	vec4 pos;
+	vec4 position;
 	vec3 normal;
+	vec2 textureCoordinates;
 };
 
 struct ModelDescription {
 	uint vertexStride;
 	uint indexStride;
+	uint materialIndex;
 };
 
 struct Range {
@@ -38,3 +40,22 @@ vec3 rand3(vec2 seed) {
     float z = rand(seed * y);
     return vec3(x, y, z);
 }
+
+struct Texture{
+	uint imageIndex;
+	uint samplerIndex;
+};
+
+struct Material {
+	float metalicFactor;
+	float roughnessFactor;
+	vec4 baseColor;
+
+	uint colorTexture;
+	uint metalicRoughnessTexture;
+	uint normalTexture;
+	uint occlusionTexture;
+	uint emissiveTexture;
+
+	bool doubleSided;
+};

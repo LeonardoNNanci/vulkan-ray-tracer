@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : enable
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_debug_printf : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 #include "raycommon.glsl"
 
@@ -9,7 +10,9 @@ layout(location=0) rayPayloadInEXT hitPayload prd;
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
-layout(set=1, binding=2) readonly buffer ModelDescription_ { ModelDescription o[]; } modelDescription;
+layout(set=1, binding=2) readonly buffer ModelDescriptionBuffer { ModelDescription o[]; } modelDescription;
+layout(set=1, binding=3) readonly buffer MaterialBuffer { Material m[]; } materialBuffer;
+layout(set=1, binding=4) uniform sampler2D textures[];
 hitAttributeEXT vec3 attribs;
 
 layout(push_constant) uniform constants {
@@ -22,29 +25,40 @@ layout(push_constant) uniform constants {
 void main()
 {
     ModelDescription desc = modelDescription.o[gl_InstanceCustomIndexEXT];
-	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
-	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
-	int i3 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
+
+	int i0 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
+	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
+	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
+
+	Vertex v0 = vertexBuffer.v[desc.vertexStride + i0];
 	Vertex v1 = vertexBuffer.v[desc.vertexStride + i1];
 	Vertex v2 = vertexBuffer.v[desc.vertexStride + i2];
-	Vertex v3 = vertexBuffer.v[desc.vertexStride + i3];
-	vec3 objectNormal = normalize((v1.normal + v2.normal + v3.normal) / 3);
 
+    Material material = materialBuffer.m[desc.materialIndex];
+
+    const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
+
+    const vec2 textureCoordinates = v0.textureCoordinates * barycentrics.x + v1.textureCoordinates * barycentrics.y + v2.textureCoordinates * barycentrics.z;
+    vec4 textureColor = texture(textures[nonuniformEXT(material.colorTexture)], textureCoordinates);
+
+	vec3 objectNormal = normalize(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z);
+    
     // pre-pass
     if(prd.fillGuideLayers){
         vec3 worldNormal = normalize(mat3(gl_ObjectToWorldEXT) * objectNormal);
+
         vec3 cameraNormal = normalize(mat3(view) * worldNormal);
-            cameraNormal.g = -cameraNormal.g;
+        cameraNormal.g = -cameraNormal.g;
 
-            uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
+        uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
 
-            prd.albedo = vec3(9.);
-            prd.normal = cameraNormal;
-            return;
+        prd.albedo = vec3(9.);
+        prd.normal = material.baseColor.rgb * textureColor.rgb;// * -dot(worldNormal, gl_WorldRayDirectionEXT);//vec3(.5) + cameraNormal / 2;
+        return;
     }
 
     // ray trace
-    if(prd.depth >= 31){
+    if(prd.depth >= 2){
         prd.hitValue = vec3(0.);
         return;
     }

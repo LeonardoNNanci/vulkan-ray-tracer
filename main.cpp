@@ -144,81 +144,86 @@ void run() {
 			.setScene(scene)
 			.build();
 
-	Descriptor bvhDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding bvhDescriptor{
 		.binding = 0,
-		.type = vk::DescriptorType::eAccelerationStructureKHR,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
+		.descriptorType = vk::DescriptorType::eAccelerationStructureKHR,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR
 	};
-	Descriptor rgbaImageDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding rgbaImageDescriptor{
 		.binding = 1,
-		.type = vk::DescriptorType::eStorageImage,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
+		.descriptorType = vk::DescriptorType::eStorageImage,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
-	Descriptor vertexBufferDescriptor{
-		.set = 1,
-		.binding = 0,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
-	};
-	Descriptor indexBufferDescriptor{
-		.set = 1,
-		.binding = 1,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR
-	};
-	Descriptor objectDescDescriptor{
-		.set = 1,
-		.binding = 2,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eClosestHitKHR,
-	};
-	Descriptor rgbDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding rgbDescriptor{
 		.binding = 4,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
 	};
-	Descriptor albedoDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding albedoDescriptor{
 		.binding = 5,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
 	};
-	Descriptor normalDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding normalDescriptor{
 		.binding = 6,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
 	};
-	Descriptor resultDescriptor{
-		.set = 0,
+	vk::DescriptorSetLayoutBinding resultDescriptor{
 		.binding = 7,
-		.type = vk::DescriptorType::eStorageBuffer,
-		.stagesUsed = vk::ShaderStageFlagBits::eCompute
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eCompute
 	};
-	//Descriptor foveatedRangesDescriptor {
-	//	.set = 0,
-	//	.binding = 8,
-	//	.type = vk::DescriptorType::eStorageBuffer,
-	//	.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
-	//};
-	//Descriptor partialResultDescriptor{
-	//	.set = 0,
-	//	.binding = 9,
-	//	.type = vk::DescriptorType::eStorageBuffer,
-	//	.stagesUsed = vk::ShaderStageFlagBits::eCompute
-	//};
+
+	vk::DescriptorSetLayoutBinding vertexBufferDescriptor{
+		.binding = 0,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+	};
+	vk::DescriptorSetLayoutBinding indexBufferDescriptor{
+		.binding = 1,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+	};
+	vk::DescriptorSetLayoutBinding objectDescDescriptor{
+		.binding = 2,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR,
+	};
+	vk::DescriptorSetLayoutBinding materialBufferDescriptor{
+		.binding = 3,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+	.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
+	};
+	vk::DescriptorSetLayoutBinding textureDescriptor{
+		.binding = 4,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.descriptorCount = static_cast<uint32_t>(scene->texturePointers.size()),
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR,
+	};
 
 	auto sceneSet = DescriptorSetBuilder(setup)
 		.addBinding(vertexBufferDescriptor)
 		.addBinding(indexBufferDescriptor)
 		.addBinding(objectDescDescriptor)
+		.addBinding(materialBufferDescriptor)
+		.addBinding(textureDescriptor)
 		.build();
 	sceneSet->updateDescriptor(vertexBufferDescriptor, scene->vertexBuffer);
 	sceneSet->updateDescriptor(indexBufferDescriptor, scene->indexBuffer);
 	sceneSet->updateDescriptor(objectDescDescriptor, scene->objectDescriptionBuffer);
+	sceneSet->updateDescriptor(materialBufferDescriptor, scene->materialBuffer);
+	sceneSet->updateDescriptor(textureDescriptor, scene->texturePointers);
 
 	auto imageArrayBuilder = BufferExternalBuilder(setup)
 		.setSize(WIDTH * HEIGHT * 3 * sizeof(float))
@@ -230,7 +235,6 @@ void run() {
 	std::shared_ptr<BufferExternal> inputBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> albedoBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> normalBuffers[FRAMES_IN_FLIGHT];
-	//std::shared_ptr<BufferExternal> partialResultBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> resultBuffers[FRAMES_IN_FLIGHT];
 	auto rayTracingSetBuilder = DescriptorSetBuilder(setup)
 		.addBinding(bvhDescriptor)
@@ -239,16 +243,6 @@ void run() {
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor);
-		//.addBinding(foveatedRangesDescriptor);
-		//.addBinding(partialResultDescriptor);
-
-	//auto foveatedRangeBuffer = BufferBuilder(setup)
-	//	.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostCoherent)
-	//	.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostVisible)
-	//	.setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
-	//	.setSize(ranges.size() * sizeof(ranges))
-	//	.build();
-	//foveatedRangeBuffer->fill(ranges);
 
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
@@ -319,7 +313,8 @@ void run() {
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
 	//printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
-	for (int i = 0; presentation->windowIsOpen(); i++) {
+
+for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle = 360./1000. * i;
