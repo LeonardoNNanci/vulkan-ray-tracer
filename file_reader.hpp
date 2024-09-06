@@ -3,6 +3,8 @@
 #include<string>
 #include<vector>
 
+#include "tiny_gltf.h"
+
 #include "scene.hpp"
 
 class FileReader {
@@ -11,7 +13,7 @@ public:
 
 	Model3D readPLY(const std::string filename, bool clockwise);
 
-	SceneBuilder readGLTF(const std::string folder, const std::string filename, SceneBuilder sceneBuilder);
+	tinygltf::Model readGLTF(const std::string folder, const std::string filename);
 
 	std::tuple<std::vector<unsigned char>, uint32_t, uint32_t> readImage(std::string filename);
 };

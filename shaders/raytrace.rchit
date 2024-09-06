@@ -38,9 +38,12 @@ void main()
 
     const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
 
-    const vec2 textureCoordinates = v0.textureCoordinates * barycentrics.x + v1.textureCoordinates * barycentrics.y + v2.textureCoordinates * barycentrics.z;
-    vec4 textureColor = texture(textures[nonuniformEXT(material.colorTexture)], textureCoordinates);
-
+    vec4 albedo = material.baseColor;
+    if(material.colorTexture >= 0){
+        const vec2 textureCoordinates = v0.textureCoordinates * barycentrics.x + v1.textureCoordinates * barycentrics.y + v2.textureCoordinates * barycentrics.z;
+        vec4 textureColor = texture(textures[nonuniformEXT(material.colorTexture)], textureCoordinates);
+        albedo *= textureColor;
+    }
 	vec3 objectNormal = normalize(v0.normal * barycentrics.x + v1.normal * barycentrics.y + v2.normal * barycentrics.z);
     
     // pre-pass
@@ -52,8 +55,8 @@ void main()
 
         uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
 
-        prd.albedo = vec3(9.);
-        prd.normal = material.baseColor.rgb * textureColor.rgb;// * -dot(worldNormal, gl_WorldRayDirectionEXT);//vec3(.5) + cameraNormal / 2;
+        prd.albedo = albedo.rgb;
+        prd.normal = cameraNormal;// * -dot(worldNormal, gl_WorldRayDirectionEXT);//vec3(.5) + cameraNormal / 2;
         return;
     }
 
@@ -84,5 +87,5 @@ void main()
     );
     prd.depth--;
 
-    prd.hitValue = .8 * vec3(1.) * prd.hitValue;
+    prd.hitValue = albedo.rgb * prd.hitValue; // + emission
 }

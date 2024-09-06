@@ -1,7 +1,6 @@
 #include "image.hpp"
 #include "buffer.hpp"
 #include "file_reader.hpp"
-#include "stb/stb_image.h"
 
 #include <iostream>
 

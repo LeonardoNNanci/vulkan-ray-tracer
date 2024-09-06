@@ -8,6 +8,7 @@
 #include "buffer.hpp"
 #include "image.hpp"
 #include "texture_sampler.hpp"
+#include "tiny_gltf.h"
 
 struct Vertex {
 	alignas(16) glm::vec4 position;
@@ -88,7 +89,7 @@ public:
 struct ModelDescription {
 	alignas(4) uint32_t vertexStride;
 	alignas(4) uint32_t indexStride;
-	alignas(4) uint32_t materialIndex;
+	alignas(4) uint32_t materialIndex = -1;
 };
 
 class SceneBuilder : public Builder<std::shared_ptr<Scene>>, IHasSetup {
@@ -106,6 +107,8 @@ public:
 	SceneBuilder addSampler(SamplerInfo sampler);
 
 	SceneBuilder addImage(std::string fileName);
+
+	SceneBuilder loadGlTF(tinygltf::Model tmodel, std::string srcFolder);
 
 	std::shared_ptr<Scene> build();
 

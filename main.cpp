@@ -14,6 +14,7 @@
 #include<iostream>
 #include <cstdlib>
 
+#include "tiny_gltf.cc"
 
 int WIDTH;
 int HEIGHT;
@@ -137,8 +138,18 @@ void run() {
 	//};
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
+	std::shared_ptr<Scene> scene;
+	{
+		std::string folder = "models\\Sponza\\";
+		std::string file = "Sponza.gltf";
 
-	auto scene = FileReader().readGLTF("models\\Sponza\\", "Sponza.gltf", SceneBuilder(setup, commandPool->createCommandBuffer())).build();
+		auto gltfData = FileReader().readGLTF(folder, file);
+
+		scene = SceneBuilder(setup, commandPool->createCommandBuffer())
+			.loadGlTF(gltfData, folder)
+			.build();
+
+	}
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
 			.setScene(scene)
@@ -264,7 +275,7 @@ void run() {
 	
 
 	PushConstant pc;
-	pc.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR;
+	pc.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eMissKHR;
 
 	auto rayTracingPipeline = PipelineBuilder(setup)
 		.addShader("./shaders/raygen.spv", vk::ShaderStageFlagBits::eRaygenKHR)
@@ -317,7 +328,7 @@ void run() {
 for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle = 360./1000. * i;
+		angle = 360./1000. * -i;
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
 		auto cameraPosition = glm::vec4(1, 1, 1., 1.0f);
 		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
@@ -396,7 +407,7 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		//auto centerTile = calcTile(OUTER_RADIUS, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
-		fullDenoiser->run(1., normalBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(1., albedoBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 
 		arrayToImgBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eComputeShader, timelineTracker);
 		arrayToImgBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);

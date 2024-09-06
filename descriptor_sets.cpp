@@ -6,6 +6,9 @@ DescriptorSet::DescriptorSet(std::shared_ptr<Setup> setup, std::shared_ptr<Descr
     : IHasSetup(setup), descriptorPool(descriptorPool) {}
 
 void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::shared_ptr<Buffer> buffer) {
+    if (buffer == nullptr)
+        return;
+
     vk::DescriptorBufferInfo bufferInfo{
         .buffer = buffer->handle,
         .offset = buffer->offset,
@@ -57,6 +60,9 @@ void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std
 }
 
 void DescriptorSet::updateDescriptor(vk::DescriptorSetLayoutBinding binding, std::vector<TexturePointers> textures) {
+    if (textures.empty())
+        return;
+
     std::vector<vk::DescriptorImageInfo> imageInfos;
     for (auto texture : textures) {
         vk::DescriptorImageInfo imageInfo{
