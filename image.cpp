@@ -10,14 +10,9 @@ Image::Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format, 
 	this->layout = vk::ImageLayout::eUndefined;
 }
 
-Image::Image(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer, std::string fileName) : IHasSetup(setup), selfDestroy(true)
+Image::Image(std::shared_ptr<Setup> setup, std::vector<unsigned char> bytes, uint32_t width, uint32_t height, std::shared_ptr<CommandBuffer> commandBuffer) : 
+	IHasSetup(setup), width(width), height(height), format(vk::Format::eR8G8B8A8Srgb), selfDestroy(true)
 {
-	auto imgData = FileReader().readImage(fileName);
-	auto pixelData = std::get<0>(imgData);
-	this->width = std::get<1>(imgData);
-	this->height = std::get<2>(imgData);
-	this->format = vk::Format::eR8G8B8A8Srgb;
-
 	vk::DeviceSize imgDataSize = this->width * this->height * 4;
 
 	auto stagingBuffer = BufferBuilder(setup)
@@ -28,7 +23,7 @@ Image::Image(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> comman
 		.setCommandBuffer(commandBuffer)
 		.build();
 
-	stagingBuffer->fill(pixelData);
+	stagingBuffer->fill(bytes);
 
 	vk::ImageCreateInfo imageInfo{
 		.imageType = vk::ImageType::e2D,

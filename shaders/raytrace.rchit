@@ -12,7 +12,8 @@ layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuff
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
 layout(set=1, binding=2) readonly buffer ModelDescriptionBuffer { ModelDescription o[]; } modelDescription;
 layout(set=1, binding=3) readonly buffer MaterialBuffer { Material m[]; } materialBuffer;
-layout(set=1, binding=4) uniform sampler2D textures[];
+layout(set=1, binding=4) readonly buffer LightBuffer {Light l[]; } lightBuffer;
+layout(set=1, binding=5) uniform sampler2D textures[];
 hitAttributeEXT vec3 attribs;
 
 layout(push_constant) uniform constants {

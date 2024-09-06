@@ -21,6 +21,9 @@ public:
         loadTextures();
         loadMaterials();
         loadMeshes();
+
+        loadLights();
+
         loadSceneGraph();
         return sceneBuilder;
     }
@@ -36,8 +39,7 @@ private:
         for (auto imageData : tmodel.images) {
             std::cout << "Image: " << imageData.name << std::endl;
             if (!imageData.uri.empty()) {
-                std::string img = imageData.uri;
-                sceneBuilder.addImage(srcFolder + img);
+                sceneBuilder.addImage(imageData.image, imageData.width, imageData.height);
                 continue;
             }
 
@@ -124,6 +126,23 @@ private:
         }
     }
 
+    void loadLights() {
+        for (auto lightData : tmodel.lights) {
+            Light light;
+
+            auto color = lightData.color;
+            light.color = { color[0], color[1], color[2] };
+            light.intensity = lightData.intensity;
+
+            if (lightData.type == "directional")
+                light.type = 0;
+            else
+                throw std::runtime_error("Light type not supported: " + lightData.type + "\n");
+
+            this->sceneBuilder.addLight(light);
+        }
+    }
+
     void loadSceneGraph() {
         auto gltfScene = tmodel.scenes[tmodel.defaultScene];
         std::stack <std::pair<tinygltf::Node, glm::mat4>> nodeStack;
@@ -148,11 +167,23 @@ private:
 
             auto transform = parentTransform * T * R * S;
 
+            // surface node
             if (node.mesh >= 0)
                 for (auto primitiveIndex : meshPrimitives[node.mesh]) {
                     Instance instance(primitiveIndex, transform, 0);
                     sceneBuilder.addInstance(instance);
                 }
+
+            // light node
+            if (node.light >= 0) {
+                auto positionTransform = parentTransform * T;
+                auto directionTransform = parentTransform * R;
+
+                Light& light = this->sceneBuilder.lights[node.light];
+                light.position = positionTransform * light.position;
+                light.direction = directionTransform * light.direction;
+                int x = 0;
+            }
 
             for (auto nodeIndex : node.children) {
                 auto child = tmodel.nodes[nodeIndex];
@@ -338,9 +369,16 @@ SceneBuilder SceneBuilder::addSampler(SamplerInfo sampler)
     return *this;
 }
 
-SceneBuilder SceneBuilder::addImage(std::string fileName)
+SceneBuilder SceneBuilder::addLight(Light light)
 {
-    this->imageFiles.push_back(fileName);
+    this->lights.push_back(light);
+    return *this;
+}
+
+SceneBuilder SceneBuilder::addImage(std::vector<unsigned char> bytes, uint32_t width, uint32_t height)
+{
+    auto image = std::make_shared<Image>(this->setup, bytes, width, height, this->commandBuffer);
+    this->images.push_back(image);
     return *this;
 }
 
@@ -355,24 +393,18 @@ std::shared_ptr<Scene> SceneBuilder::build()
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<ModelDescription> objectDescriptions;
-
-    std::vector <std::shared_ptr<Image>> images(imageFiles.size());
     std::vector <std::shared_ptr<Sampler>> samplers(samplerInfos.size());
 
     std::vector <TexturePointers> texturePointers(textureIndices.size());
 
-    if (!imageFiles.empty()) {
-        for (int i = 0; i < images.size(); i++) {
-            images[i] = std::make_shared<Image>(setup, commandBuffer, imageFiles[i]);
-        }
-
+    if (!this->images.empty()) {
         for (int i = 0; i < samplerInfos.size(); i++) {
             auto samplerInfo = samplerInfos[i];
             samplers[i] = std::make_shared<Sampler>(setup, samplerInfo.magFilter, samplerInfo.minFilter);
         }
 
         for (int i = 0; i < textureIndices.size(); i++) {
-            texturePointers[i].image = images[textureIndices[i].imageIndex];
+            texturePointers[i].image = this->images[textureIndices[i].imageIndex];
             texturePointers[i].sampler = samplers[textureIndices[i].samplerIndex];
         }
     }
@@ -428,6 +460,14 @@ std::shared_ptr<Scene> SceneBuilder::build()
         materialBuffer->fill(this->materials);
     }
 
+    auto lightBuffer = BufferBuilder(this->setup)
+        .setSize(this->lights.size() * sizeof(this->lights[0]))
+        .setCommandBuffer(this->commandBuffer)
+        .setUsage(vk::BufferUsageFlagBits::eStorageBuffer)
+        .setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+        .build();
+    lightBuffer->fill(this->lights);
+
     auto scene = std::make_shared<Scene>();
     scene->models = this->models;
     scene->instances = this->instances;
@@ -436,6 +476,8 @@ std::shared_ptr<Scene> SceneBuilder::build()
     scene->objectDescriptionBuffer = descriptionBuffer;
     scene->materialBuffer = materialBuffer;
     scene->texturePointers = texturePointers;
+    scene->lightCount = static_cast<uint32_t>(this->lights.size());
+    scene->lightBuffer = lightBuffer;
 
     return scene;
 }

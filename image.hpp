@@ -17,7 +17,7 @@ public:
 
 	Image(std::shared_ptr<Setup> setup, vk::Image handle, vk::Format format, uint32_t width, uint32_t height, vk::DeviceMemory memory=nullptr);
 
-	Image(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer, std::string fileName);
+	Image(std::shared_ptr<Setup> setup, std::vector<unsigned char> bytes, uint32_t width, uint32_t height, std::shared_ptr<CommandBuffer> commandBuffer);
 
 	void pipelineBarrier(std::shared_ptr<CommandBuffer> commandBuffer, vk::ImageLayout newLayout);
 

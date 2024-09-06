@@ -22,6 +22,15 @@ struct Vertex {
 	static std::array<vk::VertexInputAttributeDescription, 1> getAttributeDescriptions();
 };
 
+class Light {
+public:
+	alignas(16) glm::vec4 position = { 0., 0., 0., 1. };
+	alignas(16) glm::vec4 direction = { 0., 1., 0., 0. };
+	alignas(16) glm::vec3 color;
+	alignas(16) double intensity;
+	uint32_t type;
+};
+
 class TextureIndices {
 public:
 	uint32_t imageIndex;
@@ -81,6 +90,9 @@ public:
 	std::shared_ptr<Buffer> indexBuffer;
 	std::shared_ptr<Buffer> objectDescriptionBuffer;
 
+	uint32_t lightCount;
+	std::shared_ptr<Buffer> lightBuffer;
+
 	std::shared_ptr<Buffer> materialBuffer;
 
 	std::vector<TexturePointers> texturePointers;
@@ -94,6 +106,8 @@ struct ModelDescription {
 
 class SceneBuilder : public Builder<std::shared_ptr<Scene>>, IHasSetup {
 public:
+	std::vector<Light> lights;
+
 	SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer);
 
 	SceneBuilder addModel(Model3D model);
@@ -106,7 +120,9 @@ public:
 
 	SceneBuilder addSampler(SamplerInfo sampler);
 
-	SceneBuilder addImage(std::string fileName);
+	SceneBuilder addLight(Light light);
+
+	SceneBuilder addImage(std::vector<unsigned char> bytes, uint32_t width, uint32_t height);
 
 	SceneBuilder loadGlTF(tinygltf::Model tmodel, std::string srcFolder);
 
@@ -117,7 +133,7 @@ private:
 	std::vector <Instance> instances;
 	std::vector<Material> materials;
 	std::vector<SamplerInfo> samplerInfos;
-	std::vector<std::string> imageFiles;
+	std::vector<std::shared_ptr<Image>> images;
 	std::vector<TextureIndices> textureIndices;
 	std::shared_ptr<CommandBuffer> commandBuffer;
 };

@@ -139,6 +139,7 @@ void run() {
 	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
 	std::shared_ptr<Scene> scene;
+	glm::mat4 light;
 	{
 		std::string folder = "models\\Sponza\\";
 		std::string file = "Sponza.gltf";
@@ -148,7 +149,6 @@ void run() {
 		scene = SceneBuilder(setup, commandPool->createCommandBuffer())
 			.loadGlTF(gltfData, folder)
 			.build();
-
 	}
 
 	auto BVH = AccelerationStructureBuilder(setup, commandPool->createCommandBuffer())
@@ -213,11 +213,17 @@ void run() {
 	vk::DescriptorSetLayoutBinding materialBufferDescriptor{
 		.binding = 3,
 		.descriptorType = vk::DescriptorType::eStorageBuffer,
-	.descriptorCount = 1,
+		.descriptorCount = 1,
 		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR
 	};
-	vk::DescriptorSetLayoutBinding textureDescriptor{
+	vk::DescriptorSetLayoutBinding lightDescriptor{
 		.binding = 4,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR,
+	};
+	vk::DescriptorSetLayoutBinding textureDescriptor{
+		.binding = 5,
 		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
 		.descriptorCount = static_cast<uint32_t>(scene->texturePointers.size()),
 		.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR,
@@ -228,12 +234,14 @@ void run() {
 		.addBinding(indexBufferDescriptor)
 		.addBinding(objectDescDescriptor)
 		.addBinding(materialBufferDescriptor)
+		.addBinding(lightDescriptor)
 		.addBinding(textureDescriptor)
 		.build();
 	sceneSet->updateDescriptor(vertexBufferDescriptor, scene->vertexBuffer);
 	sceneSet->updateDescriptor(indexBufferDescriptor, scene->indexBuffer);
 	sceneSet->updateDescriptor(objectDescDescriptor, scene->objectDescriptionBuffer);
 	sceneSet->updateDescriptor(materialBufferDescriptor, scene->materialBuffer);
+	sceneSet->updateDescriptor(lightDescriptor, scene->lightBuffer);
 	sceneSet->updateDescriptor(textureDescriptor, scene->texturePointers);
 
 	auto imageArrayBuilder = BufferExternalBuilder(setup)

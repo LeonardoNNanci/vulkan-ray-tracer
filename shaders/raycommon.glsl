@@ -46,6 +46,14 @@ struct Texture{
 	uint samplerIndex;
 };
 
+struct Light{
+	vec4 position;
+	vec4 direction;
+	vec3 color;
+	double intensity;
+	uint type;
+};
+
 struct Material {
 	float metalicFactor;
 	float roughnessFactor;

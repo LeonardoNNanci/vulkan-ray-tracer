@@ -103,6 +103,7 @@ void Buffer::copyBuffer(std::shared_ptr<Buffer> source) {
 }
 
 template void Buffer::fill<Range>(std::vector<Range> data);
+template void Buffer::fill<Light>(std::vector<Light> data);
 template void Buffer::fill<Vertex>(std::vector<Vertex> data);
 template void Buffer::fill<Material>(std::vector<Material> data);
 template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
