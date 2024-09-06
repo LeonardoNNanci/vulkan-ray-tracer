@@ -216,6 +216,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pipeline.cpp" />
     <ClCompile Include="presentation.cpp" />
+    <ClCompile Include="texture_sampler.cpp" />
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="setup.cpp" />
     <ClCompile Include="synchronization.cpp" />
@@ -241,6 +242,7 @@
     <ClInclude Include="image.hpp" />
     <ClInclude Include="pipeline.hpp" />
     <ClInclude Include="presentation.hpp" />
+    <ClInclude Include="texture_sampler.hpp" />
     <ClInclude Include="scene.hpp" />
     <ClInclude Include="setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
