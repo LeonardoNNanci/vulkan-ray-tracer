@@ -118,7 +118,7 @@ public:
 
 	SceneBuilder addMaterial(Material material);
 
-	SceneBuilder addSampler(SamplerInfo sampler);
+	SceneBuilder addSampler(vk::Filter mag, vk::Filter min);
 
 	SceneBuilder addLight(Light light);
 
@@ -132,7 +132,7 @@ private:
 	std::vector<Model3D> models;
 	std::vector <Instance> instances;
 	std::vector<Material> materials;
-	std::vector<SamplerInfo> samplerInfos;
+	std::vector<std::shared_ptr<Sampler>> samplers;
 	std::vector<std::shared_ptr<Image>> images;
 	std::vector<TextureIndices> textureIndices;
 	std::shared_ptr<CommandBuffer> commandBuffer;

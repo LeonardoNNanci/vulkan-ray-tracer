@@ -60,12 +60,10 @@ private:
         for (auto samplerData : tmodel.samplers) {
             std::cout << "Sampler: " << samplerData.name << std::endl;
 
-            SamplerInfo sampler{
-                .magFilter = filterMap[samplerData.magFilter],
-                .minFilter = filterMap[samplerData.minFilter]
-            };
-
-            sceneBuilder.addSampler(sampler);
+            sceneBuilder.addSampler(
+                filterMap[samplerData.magFilter],
+                filterMap[samplerData.minFilter]
+            );
         }
     }
 
@@ -363,9 +361,10 @@ SceneBuilder SceneBuilder::addMaterial(Material material)
     return *this;
 }
 
-SceneBuilder SceneBuilder::addSampler(SamplerInfo sampler)
+SceneBuilder SceneBuilder::addSampler(vk::Filter mag, vk::Filter min)
 {
-    this->samplerInfos.push_back(sampler);
+    auto sampler = std::make_shared<Sampler>(this->setup, mag, min);
+    this->samplers.push_back(sampler);
     return *this;
 }
 
@@ -393,16 +392,10 @@ std::shared_ptr<Scene> SceneBuilder::build()
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<ModelDescription> objectDescriptions;
-    std::vector <std::shared_ptr<Sampler>> samplers(samplerInfos.size());
 
     std::vector <TexturePointers> texturePointers(textureIndices.size());
 
     if (!this->images.empty()) {
-        for (int i = 0; i < samplerInfos.size(); i++) {
-            auto samplerInfo = samplerInfos[i];
-            samplers[i] = std::make_shared<Sampler>(setup, samplerInfo.magFilter, samplerInfo.minFilter);
-        }
-
         for (int i = 0; i < textureIndices.size(); i++) {
             texturePointers[i].image = this->images[textureIndices[i].imageIndex];
             texturePointers[i].sampler = samplers[textureIndices[i].samplerIndex];
