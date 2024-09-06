@@ -92,7 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);VK_NO_PROTOTYPES</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\tinygltf;$(VisualStudioDir)\Libraries\happly;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,7 +120,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);VK_NO_PROTOTYPES</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\tinygltf;$(VisualStudioDir)\Libraries\happly;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
@@ -150,7 +150,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VULKAN_HPP_NO_CONSTRUCTORS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\tinygltf;$(VisualStudioDir)\Libraries\happly;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -180,7 +180,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VULKAN_HPP_NO_CONSTRUCTORS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\tinygltf;$(VisualStudioDir)\Libraries\happly;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
