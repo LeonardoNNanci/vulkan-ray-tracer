@@ -7,6 +7,8 @@
 #include "raycommon.glsl"
 
 layout(location=0) rayPayloadInEXT hitPayload prd;
+layout(location=1) rayPayloadInEXT bool isLit;
+
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
 layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
@@ -61,17 +63,40 @@ void main()
         return;
     }
 
-    // ray trace
-    if(prd.depth >= 2){
-        prd.hitValue = vec3(0.);
-        return;
-    }
+    if(prd.depth>=4) return;
 
     vec2 seed = vec2(gl_HitTEXT, gl_HitTEXT * gl_HitTEXT);
     vec3 dir = normalize(rand3(seed));
     dir = objectNormal + (dir * 0.999);
     vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
     vec3 direction = (gl_ObjectToWorldEXT * vec4(dir, 0.)).xyz;
+    vec3 worldNormal = gl_ObjectToWorldEXT * vec4(objectNormal, 0.);
+
+    vec3 directionalLight = vec3(0.1, 0.1, -1);
+
+    isLit = false;
+    prd.hitValue = vec3(0.);
+
+    // may be lit
+    if(dot(worldNormal, directionalLight) < 0.){
+        traceRayEXT(
+            topLevelAS,         // acceleration structure
+            gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT,  // rayFlags
+            0xFF,               // cullMask
+            0,                  // sbtRecordOffset
+            0,                  // sbtRecordStride
+            1,                  // missIndex
+            origin,             // ray origin
+            0.000001,                // ray min range
+            -directionalLight,             // ray direction
+            100000.0,           // ray max range
+            1                   // payload (location = 0)
+        );
+        if(isLit)
+            prd.hitValue = vec3(1.);
+    }
+
+    vec3 directLight = prd.hitValue * albedo.rgb;
 
     prd.depth++;
     traceRayEXT(topLevelAS,         // acceleration structure
@@ -88,5 +113,6 @@ void main()
     );
     prd.depth--;
 
-    prd.hitValue = albedo.rgb * prd.hitValue; // + emission
+    // ambient light + direct light + indirect light
+    prd.hitValue = (0.1 * albedo.rgb) + directLight + (0.9 * prd.hitValue); // + emission
 }

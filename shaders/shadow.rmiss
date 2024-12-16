@@ -2,10 +2,10 @@
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_debug_printf : enable
 
-layout(location = 1) rayPayloadInEXT bool isShadowed;
+layout(location = 1) rayPayloadInEXT bool isLit;
 
 void main()
 {
   debugPrintfEXT("Shadow shader\n");
-  isShadowed = false;
+  isLit = true;
 }
