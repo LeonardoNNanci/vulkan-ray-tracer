@@ -1,13 +1,13 @@
-#include "setup.hpp"
-#include "presentation.hpp"
-#include "command_pool.hpp"
-#include "buffer.hpp"
-#include "buffer_external.hpp"
-#include "denoiser.hpp"
-#include "acceleration_structure.hpp"
-#include "file_reader.hpp"
-#include "descriptor_sets.hpp"
-#include "pipeline.hpp"
+#include "engine/setup.hpp"
+#include "engine/presentation.hpp"
+#include "engine/command_pool.hpp"
+#include "engine/buffer.hpp"
+#include "engine/buffer_external.hpp"
+#include "engine/denoiser.hpp"
+#include "engine/acceleration_structure.hpp"
+#include "engine/file_reader.hpp"
+#include "engine/descriptor_sets.hpp"
+#include "engine/pipeline.hpp"
 #include<glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
@@ -405,7 +405,7 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		layoutChangeBuffer->submit();
 		layoutChangeBuffer->waitFinished();
 		rayTracingBuffer->submit();
-		fullDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(1., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 		arrayToImgBuffer->submit();
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 	}

@@ -18,46 +18,46 @@
     <ClCompile Include="main.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="setup.cpp">
+    <ClCompile Include="engine\setup.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="presentation.cpp">
+    <ClCompile Include="engine\presentation.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="command_pool.cpp">
+    <ClCompile Include="engine\command_pool.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="buffer.cpp">
+    <ClCompile Include="engine\buffer.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="file_reader.cpp">
+    <ClCompile Include="engine\file_reader.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="acceleration_structure.cpp">
+    <ClCompile Include="engine\acceleration_structure.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="scene.cpp">
+    <ClCompile Include="engine\scene.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="pipeline.cpp">
+    <ClCompile Include="engine\pipeline.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="descriptor_sets.cpp">
+    <ClCompile Include="engine\descriptor_sets.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="image.cpp">
+    <ClCompile Include="engine\image.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="synchronization.cpp">
+    <ClCompile Include="engine\synchronization.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="denoiser.cpp">
+    <ClCompile Include="engine\denoiser.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="buffer_external.cpp">
+    <ClCompile Include="engine\buffer_external.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
-    <ClCompile Include="texture_sampler.cpp">
+    <ClCompile Include="engine\texture_sampler.cpp">
       <Filter>Arquivos de Origem</Filter>
     </ClCompile>
   </ItemGroup>
@@ -78,49 +78,49 @@
     <ClInclude Include="shaders\host_device.h">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="builder.hpp">
+    <ClInclude Include="engine\builder.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="setup.hpp">
+    <ClInclude Include="engine\setup.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="presentation.hpp">
+    <ClInclude Include="engine\presentation.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="command_pool.hpp">
+    <ClInclude Include="engine\command_pool.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="acceleration_structure.hpp">
+    <ClInclude Include="engine\acceleration_structure.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="buffer.hpp">
+    <ClInclude Include="engine\buffer.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="scene.hpp">
+    <ClInclude Include="engine\scene.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="file_reader.hpp">
+    <ClInclude Include="engine\file_reader.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="pipeline.hpp">
+    <ClInclude Include="engine\pipeline.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="descriptor_sets.hpp">
+    <ClInclude Include="engine\descriptor_sets.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="image.hpp">
+    <ClInclude Include="engine\image.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="synchronization.hpp">
+    <ClInclude Include="engine\synchronization.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="denoiser.hpp">
+    <ClInclude Include="engine\denoiser.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="buffer_external.hpp">
+    <ClInclude Include="engine\buffer_external.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="texture_sampler.hpp">
+    <ClInclude Include="engine\texture_sampler.hpp">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
   </ItemGroup>

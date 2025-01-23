@@ -1,3 +1,6 @@
-[submodule "tinygltf"]
-	path = tinygltf
+[submodule "dependencies/tinygltf"]
+	path = dependencies/tinygltf
 	url = https://github.com/syoyo/tinygltf.git
+[submodule "dependencies/happly"]
+	path = dependencies/happly
+	url = https://github.com/nmwsharp/happly.git

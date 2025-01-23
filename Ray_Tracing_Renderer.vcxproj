@@ -180,7 +180,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VULKAN_HPP_NO_CONSTRUCTORS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VisualStudioDir)\Libraries\tinygltf;$(VisualStudioDir)\Libraries\happly;$(VisualStudioDir)\Libraries\glfw3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)dependencies\tinygltf;$(ProjectDir)dependencies\happly;$(ProjectDir)dependencies\glfw-3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
@@ -188,7 +188,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(NVIDIA_OPTIX_SDK)\SDK\build\lib\Release;$(VULKAN_SDK)\Lib;$(VisualStudioDir)\Libraries\glfw3.4\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CUDA_PATH)\lib\x64;$(NVIDIA_OPTIX_SDK)\SDK\build\lib\Release;$(VULKAN_SDK)\Lib;$(ProjectDir)dependencies\glfw-3.4\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;cuda.lib;cudart.lib;optixDenoiser.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
@@ -205,21 +205,21 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="acceleration_structure.cpp" />
-    <ClCompile Include="buffer.cpp" />
-    <ClCompile Include="buffer_external.cpp" />
-    <ClCompile Include="command_pool.cpp" />
-    <ClCompile Include="denoiser.cpp" />
-    <ClCompile Include="descriptor_sets.cpp" />
-    <ClCompile Include="file_reader.cpp" />
-    <ClCompile Include="image.cpp" />
+    <ClCompile Include="engine\acceleration_structure.cpp" />
+    <ClCompile Include="engine\buffer.cpp" />
+    <ClCompile Include="engine\buffer_external.cpp" />
+    <ClCompile Include="engine\command_pool.cpp" />
+    <ClCompile Include="engine\denoiser.cpp" />
+    <ClCompile Include="engine\descriptor_sets.cpp" />
+    <ClCompile Include="engine\file_reader.cpp" />
+    <ClCompile Include="engine\image.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="pipeline.cpp" />
-    <ClCompile Include="presentation.cpp" />
-    <ClCompile Include="texture_sampler.cpp" />
-    <ClCompile Include="scene.cpp" />
-    <ClCompile Include="setup.cpp" />
-    <ClCompile Include="synchronization.cpp" />
+    <ClCompile Include="engine\pipeline.cpp" />
+    <ClCompile Include="engine\presentation.cpp" />
+    <ClCompile Include="engine\texture_sampler.cpp" />
+    <ClCompile Include="engine\scene.cpp" />
+    <ClCompile Include="engine\setup.cpp" />
+    <ClCompile Include="engine\synchronization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\Downloads\main1-sponza\Main.1_Sponza\NewSponza_Main_glTF_003.bin" />
@@ -231,22 +231,22 @@
     <None Include="shaders\wavefront.glsl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="acceleration_structure.hpp" />
-    <ClInclude Include="buffer.hpp" />
-    <ClInclude Include="buffer_external.hpp" />
-    <ClInclude Include="builder.hpp" />
-    <ClInclude Include="command_pool.hpp" />
-    <ClInclude Include="denoiser.hpp" />
-    <ClInclude Include="descriptor_sets.hpp" />
-    <ClInclude Include="file_reader.hpp" />
-    <ClInclude Include="image.hpp" />
-    <ClInclude Include="pipeline.hpp" />
-    <ClInclude Include="presentation.hpp" />
-    <ClInclude Include="texture_sampler.hpp" />
-    <ClInclude Include="scene.hpp" />
-    <ClInclude Include="setup.hpp" />
+    <ClInclude Include="engine\acceleration_structure.hpp" />
+    <ClInclude Include="engine\buffer.hpp" />
+    <ClInclude Include="engine\buffer_external.hpp" />
+    <ClInclude Include="engine\builder.hpp" />
+    <ClInclude Include="engine\command_pool.hpp" />
+    <ClInclude Include="engine\denoiser.hpp" />
+    <ClInclude Include="engine\descriptor_sets.hpp" />
+    <ClInclude Include="engine\file_reader.hpp" />
+    <ClInclude Include="engine\image.hpp" />
+    <ClInclude Include="engine\pipeline.hpp" />
+    <ClInclude Include="engine\presentation.hpp" />
+    <ClInclude Include="engine\texture_sampler.hpp" />
+    <ClInclude Include="engine\scene.hpp" />
+    <ClInclude Include="engine\setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
-    <ClInclude Include="synchronization.hpp" />
+    <ClInclude Include="engine\synchronization.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
