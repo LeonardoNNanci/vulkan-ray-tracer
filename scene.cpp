@@ -13,7 +13,7 @@
 
 class GlTFParser {
 public:
-    GlTFParser(tinygltf::Model tmodel, SceneBuilder& sceneBuilder, std::string srcFolder) : tmodel(tmodel), sceneBuilder(sceneBuilder), srcFolder(srcFolder) {}
+    GlTFParser(const tinygltf::Model& tmodel, SceneBuilder& sceneBuilder, std::string srcFolder) : tmodel(tmodel), sceneBuilder(sceneBuilder), srcFolder(srcFolder) {}
 
     SceneBuilder parse() {
         loadImages();
@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    tinygltf::Model tmodel;
+    const tinygltf::Model& tmodel;
     SceneBuilder& sceneBuilder;
 
     std::string srcFolder;
@@ -37,7 +37,7 @@ private:
 
     void loadImages() {
         for (auto imageData : tmodel.images) {
-            std::cout << "Image: " << imageData.name << std::endl;
+            std::cout << "\rImage: " << imageData.name << std::flush;
             if (!imageData.uri.empty()) {
                 sceneBuilder.addImage(imageData.image, imageData.width, imageData.height);
                 continue;
@@ -45,6 +45,7 @@ private:
 
             throw std::runtime_error("Raw image loading not implemented.");
         }
+        std::cout << std::endl;
     }
 
     void loadSamplers() {
@@ -58,24 +59,26 @@ private:
         };
 
         for (auto samplerData : tmodel.samplers) {
-            std::cout << "Sampler: " << samplerData.name << std::endl;
+            std::cout << "\rSampler: " << samplerData.name << std::flush;
 
             sceneBuilder.addSampler(
                 filterMap[samplerData.magFilter],
                 filterMap[samplerData.minFilter]
             );
         }
+        std::cout << std::endl;
     }
 
     void loadTextures() {
         for (auto textureData : tmodel.textures) {
-            std::cout << "Texture: " << textureData.name << std::endl;
+            std::cout << "\rTexture: " << textureData.name << std::flush;
             TextureIndices texture{
                 .imageIndex = static_cast<uint32_t>(textureData.source),
                 .samplerIndex = static_cast<uint32_t>(textureData.sampler)
             };
             sceneBuilder.addTexture(texture);
         }
+        std::cout << std::endl;
     }
 
     void loadMaterials() {
@@ -93,49 +96,68 @@ private:
 
             material.metalicFactor = materialData.pbrMetallicRoughness.metallicFactor;
             material.roughnessFactor = materialData.pbrMetallicRoughness.roughnessFactor;
+            material.normalTexture = materialData.normalTexture.index;
 
             sceneBuilder.addMaterial(material);
         }
     }
 
     void loadMeshes() {
-        int meshCount = 0, primitiveCount = 0;
+        int meshCount = tmodel.meshes.size(), primitiveCount = 0;
+        for (auto& mesh : tmodel.meshes) {
+            primitiveCount += mesh.primitives.size();
+        }
 
-        for (auto mesh : tmodel.meshes) {
-            std::cout << "Mesh: " << mesh.name << std::endl;
-            for (auto primitive : mesh.primitives) {
+        std::vector<Model3D> models;
+        models.resize(primitiveCount);
+        meshCount = 0; primitiveCount = 0;
+
+        for (auto& mesh : tmodel.meshes) {
+            std::cout << "\rMesh: " << mesh.name << std::flush;
+            for (auto& primitive : mesh.primitives) {
                 if (primitive.mode != TINYGLTF_MODE_TRIANGLES)
                     continue;
 
-                Model3D model;
+                Model3D& model = models[primitiveCount];
 
                 loadPrimitivePositions(model, primitive);
                 loadPrimitiveNormals(model, primitive);
                 loadPrimitiveTextureCoordinates(model, primitive);
                 loadPrimitiveIndices(model, primitive, meshCount, primitiveCount);
+                loadPrimitiveTangents(model, primitive);
                 model.materialIndex = static_cast<uint32_t>(primitive.material);
 
-                sceneBuilder.addModel(model);
                 meshPrimitives[meshCount].push_back(primitiveCount);
                 primitiveCount++;
             }
 
             meshCount++;
         }
+
+        sceneBuilder.setModels(models);
+        std::cout << std::endl;
     }
 
     void loadLights() {
-        for (auto lightData : tmodel.lights) {
-            Light light;
+        if (tmodel.lights.size() == 0) {
+            Light light{
+                .color = {1., 1., 1.},
+                .intensity = 2.,
+                .type = 0
+            };
+            this->sceneBuilder.addLight(light);
+            return;
+        }
 
+        for (auto lightData : tmodel.lights) {
+            if (lightData.type != "directional")
+                throw std::runtime_error("Light type not supported: " + lightData.type + "\n");
+
+            Light light;
             auto color = lightData.color;
             light.color = { color[0], color[1], color[2] };
             light.intensity = lightData.intensity;
-
-            if (lightData.type == "directional")
-                light.type = 0;
-            else
-                throw std::runtime_error("Light type not supported: " + lightData.type + "\n");
+            light.type = 0;
 
             this->sceneBuilder.addLight(light);
         }
@@ -154,11 +176,11 @@ private:
             auto [node, parentTransform] = nodeStack.top();
             nodeStack.pop();
 
-            std::cout << "Node: " << node.name << std::endl;
+            std::cout << "\rNode: " << node.name << std::flush;
 
-            auto translation = !node.translation.empty() ? glm::vec3(node.translation[0], node.translation[2], -node.translation[1]) : glm::vec3(0.);
-            auto rotation = !node.rotation.empty() ? glm::quat(node.rotation[3], node.rotation[0], node.rotation[2], -node.rotation[1]) : glm::quat(1., 0., 0., 0.);
-            auto scale = !node.scale.empty() ? glm::vec3(node.scale[0], node.scale[2], -node.scale[1]) : glm::vec3(1.);
+            auto translation = !node.translation.empty() ? glm::vec3(node.translation[0], node.translation[1], node.translation[2]) : glm::vec3(0.);
+            auto rotation = !node.rotation.empty() ? glm::quat(node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]) : glm::quat(1., 0., 0., 0.);
+            auto scale = !node.scale.empty() ? glm::vec3(node.scale[0], node.scale[1], node.scale[2]) : glm::vec3(1.);
             auto T = glm::translate(glm::mat4(1.), translation);
             auto R = glm::mat4_cast(rotation);
             auto S = glm::scale(glm::mat4(1.), scale);
@@ -188,9 +210,10 @@ private:
                 nodeStack.push({ child, transform });
             }
         }
+        std::cout << std::endl;
     }
 
-    void loadPrimitivePositions(Model3D& model, tinygltf::Primitive primitive) {
+    void loadPrimitivePositions(Model3D& model, const tinygltf::Primitive& primitive) {
         auto p = primitive.attributes.find("POSITION");
         if (p == primitive.attributes.end())
             return;
@@ -212,11 +235,11 @@ private:
         auto stride = std::max((int)positionBufferView.byteStride, componentSize * numComponents);
         for (auto [i, p] = std::tuple{ 0, positionData }; i < positionAccessor.count; i++, p += stride) {
             std::memcpy(pos.data(), p, numComponents * componentSize);
-            model.vertices[i].position = { pos[0], pos[2], -pos[1], 1. };
+            model.vertices[i].position = { pos[0], pos[1], pos[2], 1. };
         }
     }
 
-    void loadPrimitiveNormals(Model3D& model, tinygltf::Primitive primitive) {
+    void loadPrimitiveNormals(Model3D& model, const tinygltf::Primitive& primitive) {
         auto p = primitive.attributes.find("NORMAL");
         if (p == primitive.attributes.end())
             return;
@@ -236,11 +259,11 @@ private:
         auto stride = std::max((int)normalBufferView.byteStride, componentSize * numComponents);
         for (auto [i, p] = std::tuple{ 0, positionData }; i < normalAccessor.count; i++, p += stride) {
             std::memcpy(normal.data(), p, numComponents * componentSize);
-            model.vertices[i].normal = { normal[0], normal[2], -normal[1] };
+            model.vertices[i].normal = { normal[0], normal[1], normal[2] };
         }
     }
 
-    void loadPrimitiveTextureCoordinates(Model3D& model, tinygltf::Primitive primitive) {
+    void loadPrimitiveTextureCoordinates(Model3D& model, const tinygltf::Primitive& primitive) {
         auto p = primitive.attributes.find("TEXCOORD_0");
         if (p == primitive.attributes.end())
             return;
@@ -264,7 +287,31 @@ private:
         }
     }
 
-    void loadPrimitiveIndices(Model3D& model, tinygltf::Primitive primitive, int meshCount, int primitiveCount) {
+    void loadPrimitiveTangents(Model3D& model, const tinygltf::Primitive& primitive) {
+        auto p = primitive.attributes.find("TANGENT");
+        if (p == primitive.attributes.end())
+            return;
+
+        auto index = p->second;
+        auto accessor = tmodel.accessors[index];
+        auto bufferView = tmodel.bufferViews[accessor.bufferView];
+        auto buffer = tmodel.buffers[bufferView.buffer];
+        if (accessor.type != TINYGLTF_MODE_TRIANGLES)
+            return;
+
+        int numComponents = tinygltf::GetNumComponentsInType(accessor.type);
+        int componentSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
+        auto data = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+
+        std::vector<float> tangent(numComponents);
+        auto stride = std::max((int)bufferView.byteStride, componentSize * numComponents);
+        for (auto [i, p] = std::tuple{ 0, data }; i < accessor.count; i++, p += stride) {
+            std::memcpy(tangent.data(), p, numComponents * componentSize);
+            model.vertices[i].tangent = { tangent[0], tangent[1], tangent[2], tangent[3]};
+        }
+    }
+
+    void loadPrimitiveIndices(Model3D& model, const tinygltf::Primitive& primitive, int meshCount, int primitiveCount) {
         // unindexed
         if (primitive.indices < 0) {
             model.indices.resize(model.vertices.size());
@@ -337,7 +384,13 @@ Instance::Instance(uint32_t modelId, glm::mat4 transform, uint32_t hitShaderOffs
 
 SceneBuilder::SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer) : IHasSetup(setup), commandBuffer(commandBuffer) {}
 
-SceneBuilder SceneBuilder::addModel(Model3D model)
+SceneBuilder SceneBuilder::setModels(std::vector<Model3D>& models)
+{
+    this->models = models;
+    return *this;
+}
+
+SceneBuilder SceneBuilder::addModel(Model3D& model)
 {
     this->models.push_back(model);
     return *this;
@@ -374,14 +427,14 @@ SceneBuilder SceneBuilder::addLight(Light light)
     return *this;
 }
 
-SceneBuilder SceneBuilder::addImage(std::vector<unsigned char> bytes, uint32_t width, uint32_t height)
+SceneBuilder SceneBuilder::addImage(const std::vector<unsigned char>& bytes, uint32_t width, uint32_t height)
 {
     auto image = std::make_shared<Image>(this->setup, bytes, width, height, this->commandBuffer);
     this->images.push_back(image);
     return *this;
 }
 
-SceneBuilder SceneBuilder::loadGlTF(tinygltf::Model tmodel, std::string srcFolder)
+SceneBuilder SceneBuilder::loadGlTF(const tinygltf::Model& tmodel, std::string srcFolder)
 {
     GlTFParser(tmodel, *this, srcFolder).parse();
     return *this;

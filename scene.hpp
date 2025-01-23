@@ -15,6 +15,8 @@ struct Vertex {
 
 	alignas(16) glm::vec3 normal;
 
+	alignas(16) glm::vec4 tangent;
+
 	alignas(8) glm::vec2 textureCoordinates;
 
 	static vk::VertexInputBindingDescription getBindingDescription();
@@ -25,9 +27,9 @@ struct Vertex {
 class Light {
 public:
 	alignas(16) glm::vec4 position = { 0., 0., 0., 1. };
-	alignas(16) glm::vec4 direction = { 0., 1., 0., 0. };
+	alignas(16) glm::vec4 direction = { 0., 0., 1., 0. };
 	alignas(16) glm::vec3 color;
-	alignas(16) double intensity;
+	float intensity;
 	uint32_t type;
 };
 
@@ -110,7 +112,9 @@ public:
 
 	SceneBuilder(std::shared_ptr<Setup> setup, std::shared_ptr<CommandBuffer> commandBuffer);
 
-	SceneBuilder addModel(Model3D model);
+	SceneBuilder setModels(std::vector<Model3D>& models);
+
+	SceneBuilder addModel(Model3D& model);
 
 	SceneBuilder addInstance(Instance instance);
 
@@ -122,9 +126,9 @@ public:
 
 	SceneBuilder addLight(Light light);
 
-	SceneBuilder addImage(std::vector<unsigned char> bytes, uint32_t width, uint32_t height);
+	SceneBuilder addImage(const std::vector<unsigned char>& bytes, uint32_t width, uint32_t height);
 
-	SceneBuilder loadGlTF(tinygltf::Model tmodel, std::string srcFolder);
+	SceneBuilder loadGlTF(const tinygltf::Model& tmodel, std::string srcFolder);
 
 	std::shared_ptr<Scene> build();
 

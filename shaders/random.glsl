@@ -1,4 +1,4 @@
-float PI = 3.14159265359;
+#include "constants.glsl"
 
 // Generate a random unsigned int from two unsigned int values, using 16 pairs
 // of rounds of the Tiny Encryption Algorithm. See Zafar, Olano, and Curtis,

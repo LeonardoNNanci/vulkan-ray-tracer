@@ -10,5 +10,8 @@ layout(location = 0) rayPayloadInEXT hitPayload prd;
 
 void main()
 {
+
+    vec3 unit_direction = gl_WorldRayDirectionEXT;
+    float a = 0.5*(unit_direction.y + 1.0);
     prd.hitValue = vec3(0.);
 }

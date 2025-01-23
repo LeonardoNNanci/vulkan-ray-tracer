@@ -80,7 +80,7 @@ std::shared_ptr<BottomLevelStructure> AccelerationStructureBuilder::createBottom
         {
             .geometryType = vk::GeometryTypeKHR::eTriangles,
             .geometry = geometryData,
-            .flags = vk::GeometryFlagBitsKHR::eOpaque,
+            .flags = vk::GeometryFlagBitsKHR::eNoDuplicateAnyHitInvocation,
         }
         });
 

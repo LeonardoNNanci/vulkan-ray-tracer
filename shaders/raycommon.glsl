@@ -5,6 +5,7 @@ struct hitPayload
 	vec3 albedo;
 	vec3 normal;
 	bool fillGuideLayers;
+	uint seed;
 };
 
 struct DenoiserInfo{
@@ -15,6 +16,7 @@ struct DenoiserInfo{
 struct Vertex{
 	vec4 position;
 	vec3 normal;
+	vec4 tangent;
 	vec2 textureCoordinates;
 };
 
@@ -48,9 +50,9 @@ struct Texture{
 
 struct Light{
 	vec4 position;
-	vec4 direction;
+	vec3 direction;
 	vec3 color;
-	double intensity;
+	float intensity;
 	uint type;
 };
 

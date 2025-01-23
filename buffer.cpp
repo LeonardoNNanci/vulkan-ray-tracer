@@ -17,6 +17,8 @@ BufferBuilder BufferBuilder::setMemoryProperties(vk::MemoryPropertyFlags propert
 
 BufferBuilder BufferBuilder::setSize(vk::DeviceSize size)
 {
+	if (size <= 0)
+		throw std::runtime_error("Buffer size must be greater than zero.\n");
 	this->size = size;
 	return *this;
 }

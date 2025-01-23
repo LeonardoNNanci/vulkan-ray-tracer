@@ -35,8 +35,8 @@ std::shared_ptr<Pipeline> PipelineBuilder::build()
     pipeline->SBT = shaderBindingTable;
     //pipeline->descriptorSets = this->descriptorSets;
 
-    for (auto& shaderModule : this->shaderModules) {
-        this->setup->device.destroyShaderModule(shaderModule);
+    for (const auto& [key, shaderModulePair] : this->shaderModules) {
+        this->setup->device.destroyShaderModule(shaderModulePair.first);
     }
 
     return pipeline;
@@ -65,9 +65,7 @@ vk::PipelineShaderStageCreateInfo PipelineBuilder::createStage(vk::ShaderModule 
 
 PipelineBuilder PipelineBuilder::addShader(const std::string& shaderFileName, vk::ShaderStageFlagBits stage)
 {
-    auto code = FileReader().readSPV(shaderFileName);
-    auto shaderModule = this->createShaderModule(code);
-    auto stageInfo = this->createStage(shaderModule, stage);
+    uint32_t stageIndex = this->resolveStage(shaderFileName, stage);
 
     vk::RayTracingShaderGroupTypeKHR shaderGroupType;
     switch (stage)
@@ -86,11 +84,6 @@ PipelineBuilder PipelineBuilder::addShader(const std::string& shaderFileName, vk
         shaderGroupType = vk::RayTracingShaderGroupTypeKHR::eGeneral;
         callCount++;
         break;
-        
-    case vk::ShaderStageFlagBits::eAnyHitKHR:
-        shaderGroupType = vk::RayTracingShaderGroupTypeKHR::eGeneral;
-        anyCount++;
-        break;
 
     case vk::ShaderStageFlagBits::eRaygenKHR:
         shaderGroupType = vk::RayTracingShaderGroupTypeKHR::eGeneral;
@@ -101,15 +94,34 @@ PipelineBuilder PipelineBuilder::addShader(const std::string& shaderFileName, vk
     }
     vk::RayTracingShaderGroupCreateInfoKHR shaderGroup{
             .type = shaderGroupType,
-            .generalShader = static_cast<uint32_t>(this->shaderModules.size()),
+            .generalShader = stageIndex,
             .closestHitShader = vk::ShaderUnusedKHR,
             .anyHitShader = vk::ShaderUnusedKHR,
             .intersectionShader = vk::ShaderUnusedKHR
     };
 
-    this->shaderModules.push_back(shaderModule);
-    this->stages.push_back(stageInfo);
     this->shaderGroups.push_back(shaderGroup);
+
+    return *this;
+}
+
+PipelineBuilder PipelineBuilder::addHitGroup(const std::string& closestHitFileName, const std::string& anyHitFilename)
+{
+    uint32_t stageIndex;
+
+    auto closestHitStageIndex = this->resolveStage(closestHitFileName, vk::ShaderStageFlagBits::eClosestHitKHR);
+    auto anyHitStageIndex = this->resolveStage(anyHitFilename, vk::ShaderStageFlagBits::eAnyHitKHR);
+
+    vk::RayTracingShaderGroupCreateInfoKHR shaderGroup{
+        .type = vk::RayTracingShaderGroupTypeKHR::eTrianglesHitGroup,
+        .generalShader = vk::ShaderUnusedKHR,
+        .closestHitShader = closestHitStageIndex,
+        .anyHitShader = anyHitStageIndex,
+        .intersectionShader = vk::ShaderUnusedKHR
+    };
+
+    this->shaderGroups.push_back(shaderGroup);
+    this->hitCount++;
 
     return *this;
 }
@@ -245,6 +257,24 @@ ShaderBindingTable PipelineBuilder::createShaderBindingTable(vk::Pipeline pipeli
     shaderBindingTable.anyRegion = anyRegion;
 
     return shaderBindingTable;
+}
+
+uint32_t PipelineBuilder::resolveStage(const std::string& shaderFileName, vk::ShaderStageFlagBits stage){
+    auto p = this->shaderModules.find(shaderFileName);
+    if (p != this->shaderModules.end())
+        return p->second.second;
+
+    auto code = FileReader().readSPV(shaderFileName);
+    auto shaderModule = this->createShaderModule(code);
+
+    auto stageInfo = this->createStage(shaderModule, stage);
+    auto stageIndex = static_cast<uint32_t>(this->stages.size());
+
+
+    this->shaderModules[shaderFileName] = { shaderModule, stageIndex };
+    this->stages.push_back(stageInfo);
+
+    return stageIndex;
 }
 
 Pipeline::Pipeline(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}

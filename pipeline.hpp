@@ -61,6 +61,8 @@ public:
 
 	PipelineBuilder addShader(const std::string& shaderFileName, vk::ShaderStageFlagBits stage);
 
+	PipelineBuilder addHitGroup(const std::string& closestHitFileName, const std::string& anyHitFilename);;
+
 	PipelineBuilder addDescriptorSet(std::shared_ptr<DescriptorSet> descriptorSet);
 
 	PipelineBuilder addPushconstant(PushConstant pushConstant);
@@ -69,11 +71,11 @@ public:
 
 private:
 	std::vector<vk::PipelineShaderStageCreateInfo> stages;
-	std::vector<vk::ShaderModule> shaderModules;
+	std::map<std::string, std::pair<vk::ShaderModule, UINT>> shaderModules; // <fileName, <shaderModule, stageIndex>>
 	std::vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
 	std::vector<vk::PushConstantRange> pushConstantRanges;
 	std::vector<std::shared_ptr<DescriptorSet>> descriptorSets;
-	uint32_t maxRecursionDepth = 2;
+	uint32_t maxRecursionDepth = 32;
 
 	uint32_t hitCount = 0;
 	uint32_t missCount = 0;
@@ -81,6 +83,8 @@ private:
 	uint32_t anyCount = 0;
 
 	ShaderBindingTable createShaderBindingTable(vk::Pipeline pipeline);
+
+	uint32_t resolveStage(const std::string& shaderFileName, vk::ShaderStageFlagBits stage);
 
 	vk::ShaderModule createShaderModule(std::vector<char>& code);
 

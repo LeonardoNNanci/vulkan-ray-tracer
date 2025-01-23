@@ -1,0 +1,43 @@
+#version 460
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_ray_tracing : require
+#extension GL_EXT_debug_printf : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+#include "raycommon.glsl"
+#include "constants.glsl"
+
+layout(set=1, binding=0) readonly buffer VertexBuffer { Vertex v[]; } vertexBuffer;
+layout(set=1, binding=1) readonly buffer IndexBuffer { int i[]; } indexBuffer;
+layout(set=1, binding=2) readonly buffer ModelDescriptionBuffer { ModelDescription o[]; } modelDescription;
+layout(set=1, binding=3) readonly buffer MaterialBuffer { Material m[]; } materialBuffer;
+layout(set=1, binding=4) readonly buffer LightBuffer {Light l[]; } lightBuffer;
+layout(set=1, binding=5) uniform sampler2D textures[];
+
+hitAttributeEXT vec3 attribs;
+
+void main(){
+    ModelDescription desc = modelDescription.o[gl_InstanceCustomIndexEXT];
+
+    int i0 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID];
+	int i1 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 1];
+	int i2 = indexBuffer.i[desc.indexStride + 3 * gl_PrimitiveID + 2];
+
+	Vertex v0 = vertexBuffer.v[desc.vertexStride + i0];
+	Vertex v1 = vertexBuffer.v[desc.vertexStride + i1];
+	Vertex v2 = vertexBuffer.v[desc.vertexStride + i2];
+
+    Material material = materialBuffer.m[desc.materialIndex];
+
+    const vec3 barycentrics = vec3(1.0 - attribs.x - attribs.y, attribs.x, attribs.y);
+    const vec2 textureCoordinates = v0.textureCoordinates * barycentrics.x + v1.textureCoordinates * barycentrics.y + v2.textureCoordinates * barycentrics.z;
+
+    if(material.colorTexture == iNULL)
+        return;
+
+    vec4 textureColor = texture(textures[nonuniformEXT(material.colorTexture)], textureCoordinates);
+    if(textureColor.a > 0.) // only full transparency
+        return;
+
+    ignoreIntersectionEXT;
+}
