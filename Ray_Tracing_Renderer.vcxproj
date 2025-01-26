@@ -180,7 +180,7 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VULKAN_HPP_NO_CONSTRUCTORS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)dependencies\tinygltf;$(ProjectDir)dependencies\happly;$(ProjectDir)dependencies\glfw-3.4\include;$(NVIDIA_OPTIX_SDK)\include;$(CUDA_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(CUDA_PATH)\include;$(VULKAN_SDK)\Include;$(NVIDIA_OPTIX_SDK)\include;$(ProjectDir)dependencies\tinygltf;$(ProjectDir)dependencies\happly;$(ProjectDir)dependencies\glfw-3.4\include;$(ProjectDir)dependencies\imgui;$(ProjectDir)dependencies\imgui\backends;$(ProjectDir)dependencies\imgui\misc\cpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
@@ -205,6 +205,14 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="dependencies\imgui\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="dependencies\imgui\backends\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_demo.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_draw.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_tables.cpp" />
+    <ClCompile Include="dependencies\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="dependencies\imgui\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="engine\acceleration_structure.cpp" />
     <ClCompile Include="engine\buffer.cpp" />
     <ClCompile Include="engine\buffer_external.cpp" />
@@ -220,6 +228,7 @@
     <ClCompile Include="engine\scene.cpp" />
     <ClCompile Include="engine\setup.cpp" />
     <ClCompile Include="engine\synchronization.cpp" />
+    <ClCompile Include="UI\UI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\Downloads\main1-sponza\Main.1_Sponza\NewSponza_Main_glTF_003.bin" />
@@ -231,6 +240,15 @@
     <None Include="shaders\wavefront.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dependencies\imgui\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="dependencies\imgui\backends\imgui_impl_vulkan.h" />
+    <ClInclude Include="dependencies\imgui\imconfig.h" />
+    <ClInclude Include="dependencies\imgui\imgui.h" />
+    <ClInclude Include="dependencies\imgui\imgui_internal.h" />
+    <ClInclude Include="dependencies\imgui\imstb_rectpack.h" />
+    <ClInclude Include="dependencies\imgui\imstb_textedit.h" />
+    <ClInclude Include="dependencies\imgui\imstb_truetype.h" />
+    <ClInclude Include="dependencies\imgui\misc\cpp\imgui_stdlib.h" />
     <ClInclude Include="engine\acceleration_structure.hpp" />
     <ClInclude Include="engine\buffer.hpp" />
     <ClInclude Include="engine\buffer_external.hpp" />
@@ -247,6 +265,10 @@
     <ClInclude Include="engine\setup.hpp" />
     <ClInclude Include="shaders\host_device.h" />
     <ClInclude Include="engine\synchronization.hpp" />
+    <ClInclude Include="UI\UI.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="dependencies\imgui\misc\debuggers\imgui.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

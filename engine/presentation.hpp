@@ -14,7 +14,7 @@ class Swapchain {
 public:
 	vk::SwapchainKHR handle;
 	vk::Extent2D extent;
-	vk::Format format;
+	vk::SurfaceFormatKHR format;
 	std::vector<std::shared_ptr<Image>> images;
 };
 

@@ -10,16 +10,31 @@
 
 #include <memory>
 
-struct PushConstantData {
-	alignas(16) glm::mat4 proj;
-	alignas(16) glm::mat4 projInv;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 viewInv;
+struct CameraData {
+	alignas(16) glm::mat4 currProj;
+	alignas(16) glm::mat4 currProjInv;
+	alignas(16) glm::mat4 currView;
+	alignas(16) glm::mat4 currViewInv;
+
+	//alignas(16) glm::mat4 prevProj;
+	//alignas(16) glm::mat4 prevProjInv;
+	//alignas(16) glm::mat4 prevView;
+	//alignas(16) glm::mat4 prevViewInv;
+
+public:
+	void setCurrMats(glm::mat4 proj, glm::mat4 view);
 };
 
 class PushConstant {
+
+	class Contents {
+	public:
+		alignas(4) float time;
+		alignas(4) int frame;
+	};
+
 public:
-	PushConstantData data;
+	Contents data;
 	vk::ShaderStageFlags stagesUsed;
 	uint32_t size();
 
@@ -71,7 +86,7 @@ public:
 
 private:
 	std::vector<vk::PipelineShaderStageCreateInfo> stages;
-	std::map<std::string, std::pair<vk::ShaderModule, UINT>> shaderModules; // <fileName, <shaderModule, stageIndex>>
+	std::map<std::string, std::pair<vk::ShaderModule, unsigned int>> shaderModules; // <fileName, <shaderModule, stageIndex>>
 	std::vector<vk::RayTracingShaderGroupCreateInfoKHR> shaderGroups;
 	std::vector<vk::PushConstantRange> pushConstantRanges;
 	std::vector<std::shared_ptr<DescriptorSet>> descriptorSets;

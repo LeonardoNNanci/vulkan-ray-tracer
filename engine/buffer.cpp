@@ -1,5 +1,6 @@
 #include "buffer.hpp"
 #include "scene.hpp"
+#include "pipeline.hpp"
 
 BufferBuilder::BufferBuilder(std::shared_ptr<Setup> setup) : IHasSetup(setup) {}
 
@@ -110,6 +111,7 @@ template void Buffer::fill<Vertex>(std::vector<Vertex> data);
 template void Buffer::fill<Material>(std::vector<Material> data);
 template void Buffer::fill<uint32_t>(std::vector<uint32_t> data);
 template void Buffer::fill<vk::Image>(std::vector<vk::Image> data);
+template void Buffer::fill<CameraData>(std::vector<CameraData> data);
 template void Buffer::fill<vk::Sampler>(std::vector<vk::Sampler> data);
 template void Buffer::fill<unsigned char>(std::vector<unsigned char> data);
 template void Buffer::fill<ModelDescription>(std::vector<ModelDescription> data);

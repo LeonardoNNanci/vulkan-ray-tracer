@@ -83,13 +83,13 @@ Swapchain PresentationBuilder::createSwapchain()
             break;
         }
     swapchain.extent = surfaceCapabilities.currentExtent;
-    swapchain.format = format_.format;
+    swapchain.format = format_;
 
     vk::SwapchainCreateInfoKHR swapchainInfo{
         .surface = this->presentation->surface,
         .minImageCount = surfaceCapabilities.minImageCount,
-        .imageFormat = swapchain.format,
-        .imageColorSpace = format_.colorSpace,
+        .imageFormat = swapchain.format.format,
+        .imageColorSpace = swapchain.format.colorSpace,
         .imageExtent = swapchain.extent,
         .imageArrayLayers = 1,
         .imageUsage = vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc,
@@ -145,7 +145,7 @@ std::vector<std::shared_ptr<Image>> PresentationBuilder::createImages()
     images.resize(nImages);
     
     for (int i = 0; i < nImages; i++) {
-        images[i] = std::make_shared<Image>(this->setup, scImages[i], this->presentation->swapchain.format, this->width, this->height);
+        images[i] = std::make_shared<Image>(this->setup, scImages[i], this->presentation->swapchain.format.format, this->width, this->height);
     }
 
     return images;

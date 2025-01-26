@@ -8,8 +8,10 @@
 #include "engine/file_reader.hpp"
 #include "engine/descriptor_sets.hpp"
 #include "engine/pipeline.hpp"
+
 #include<glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+
 #include <chrono>
 #include<iostream>
 #include <cstdlib>
@@ -263,6 +265,22 @@ void run() {
 		.addBinding(normalDescriptor)
 		.addBinding(resultDescriptor);
 
+	vk::DescriptorSetLayoutBinding cameraBinding{
+			.binding = 0,
+			.descriptorType = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = 1,
+			.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eRaygenKHR,
+	};
+	std::shared_ptr<Buffer> cameraBuffers[FRAMES_IN_FLIGHT];
+	auto cameraSetBuilder = DescriptorSetBuilder(setup)
+		.addBinding(cameraBinding);
+	std::shared_ptr<DescriptorSet> cameraSets[FRAMES_IN_FLIGHT];
+	auto cameraBufferBuilder = BufferBuilder(setup)
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setSize(sizeof(CameraData))
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+		.setUsage(vk::BufferUsageFlagBits::eUniformBuffer);
+
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		inputBuffers[i] = imageArrayBuilder.buildExternal();
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
@@ -276,27 +294,30 @@ void run() {
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
+
+		cameraBuffers[i] = cameraBufferBuilder.build();
+		cameraSets[i] = cameraSetBuilder.build();
+		cameraSets[i]->updateDescriptor(cameraBinding, cameraBuffers[i]);
 	}
 	
 
 	PushConstant pc;
-	pc.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eMissKHR;
+	pc.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR;
 
 	auto rayTracingPipeline = PipelineBuilder(setup)
 		.addShader("./shaders/raygen.spv", vk::ShaderStageFlagBits::eRaygenKHR)
 		.addShader("./shaders/miss.spv", vk::ShaderStageFlagBits::eMissKHR)
 		.addShader("./shaders/shadow.spv", vk::ShaderStageFlagBits::eMissKHR)
-		//.addShader("./shaders/closesthit.spv", vk::ShaderStageFlagBits::eClosestHitKHR)
 		.addHitGroup("./shaders/closesthit.spv", "./shaders/anyhit.spv")
 		//.addHitGroup("./shaders/closesthit.spv", "./shaders/anyhit.spv")
 		.addDescriptorSet(rayTracingSets[0])
 		.addDescriptorSet(sceneSet)
+		.addDescriptorSet(cameraSets[0])
 		.addPushconstant(pc)
 		.setMaxRecursionDepth(31)
 		.build();
 
 	auto bufferToImage = createComputePipeline(setup, "./shaders/buffer_to_image.spv", { rayTracingSets[0]->layout}, {});
-	//auto imageBlend = createComputePipeline(setup, "./shaders/image_blend.spv", { rayTracingSets[0]->layout }, {});
 
 	std::shared_ptr<Semaphore> imageReadySemaphores[FRAMES_IN_FLIGHT];
 	std::shared_ptr<Semaphore> renderFinishedSemaphores[FRAMES_IN_FLIGHT];
@@ -304,9 +325,7 @@ void run() {
 
 	std::shared_ptr<CommandBuffer> layoutChangeBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<CommandBuffer> rayTracingBuffers[FRAMES_IN_FLIGHT];
-	//std::shared_ptr<CommandBuffer> imgToArrayBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<CommandBuffer> arrayToImgBuffers[FRAMES_IN_FLIGHT];
-	//std::shared_ptr<CommandBuffer> blendImageBuffers[FRAMES_IN_FLIGHT];
 
 	for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		imageReadySemaphores[i] = std::make_shared<Semaphore>(setup);
@@ -315,9 +334,7 @@ void run() {
 
 		layoutChangeBuffers[i] = commandPool->createCommandBuffer();
 		rayTracingBuffers[i] = commandPool->createCommandBuffer();
-		//imgToArrayBuffers[i] = commandPool->createCommandBuffer();
 		arrayToImgBuffers[i] = commandPool->createCommandBuffer();
-		//blendImageBuffers[i] = commandPool->createCommandBuffer();
 	}
 
 		auto fullDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
@@ -333,19 +350,6 @@ void run() {
 	//printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
 
 for (int i = 0; presentation->windowIsOpen(); i++) {
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
-		angle += 360./1000.;
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(-0.5, 10.f, 0., 1.0f);
-		pc.data.proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
-		pc.data.projInv = glm::inverse(pc.data.proj);
-		pc.data.view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 10.f, 0.f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::radians(angle), glm::vec3(0., 1., 0.));
-		pc.data.viewInv = glm::inverse(pc.data.view);
-		pc.data = pc.data;
-
-		previousTime = currentTime;
-
 		auto& timelineTracker = timelineTrackers[iterationTracker];
 		auto& imageReadySemaphore = imageReadySemaphores[iterationTracker];
 		auto& renderFinishedSemaphore = renderFinishedSemaphores[iterationTracker];
@@ -360,6 +364,25 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto& albedoBuffer = albedoBuffers[iterationTracker];
 		auto& normalBuffer = normalBuffers[iterationTracker];
 		auto& resultBuffer = resultBuffers[iterationTracker];
+
+		auto& cameraSet = cameraSets[iterationTracker];
+		auto& cameraBuffer = cameraBuffers[iterationTracker];
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
+		angle += 360./1000.;
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
+		auto cameraPosition = glm::vec4(-0.5, 10.f, 0., 1.0f);
+		auto proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
+		auto view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 10.f, 0.f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::radians(angle), glm::vec3(0., 1., 0.));
+		previousTime = currentTime;
+
+		CameraData camera;
+		camera.setCurrMats(proj, view);
+		cameraBuffer->fill<CameraData>({ camera });
+
+		pc.data.frame = i;
+		pc.data.time = std::chrono::duration<float>(currentTime.time_since_epoch()).count();
 
 		iterationTracker = (iterationTracker + 1) % FRAMES_IN_FLIGHT;
 
@@ -381,7 +404,7 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		rayTracingBuffer->addWaitSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eRayTracingShaderKHR, timelineTracker);
 		rayTracingBuffer->addSignalSemaphore(timelineSemaphore, vk::PipelineStageFlagBits::eAllCommands, ++timelineTracker);
 		rayTracingBuffer->begin();
-		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet}, { pc }, ranges);
+		rayTracingPipeline->run(rayTracingBuffer, presentation->swapchain.extent, {rayTracingSet, sceneSet, cameraSet}, { pc }, ranges);
 
 		auto fullImage = calcTile(std::max(WIDTH, HEIGHT) / 2, true);
 		fullDenoiser->setSync(timelineSemaphore->cuda, timelineTracker++, timelineTracker+1);
@@ -417,17 +440,10 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 }
 
 int main(int argc, char* argv[]) {
-	//if(argc < 6)
-	//{
-	//	std::cerr << "Not enough command line arguments. Expected: WIDTH HEIGHT INNER_RADUIS OUTER_RADIUS P" << std::endl;
-	//	return -1;
-	//}
-
 	WIDTH = 900;
 	HEIGHT = 900;
 	INNER_RADIUS = 1500;
 	OUTER_RADIUS = 1900;
-	//P = std::atof(argv[5]);
 
 	ranges = { {1., 0., (float)INNER_RADIUS}, {(float)1. / P, (float)OUTER_RADIUS, (float)WIDTH} };
 

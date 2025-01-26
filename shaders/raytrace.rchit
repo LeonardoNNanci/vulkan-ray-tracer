@@ -20,12 +20,12 @@ layout(set=1, binding=4) readonly buffer LightBuffer {Light l[]; } lightBuffer;
 layout(set=1, binding=5) uniform sampler2D textures[];
 hitAttributeEXT vec3 attribs;
 
-layout(push_constant) uniform constants {
-    mat4 proj;
-    mat4 projInv;
-    mat4 view;
-    mat4 viewInv;
-};
+layout(set = 2, binding = 0) uniform UBO {
+    mat4 currProj;
+	mat4 currProjInv;
+	mat4 currView;
+	mat4 currViewInv;
+} ubo;
 
 void main()
 {
@@ -70,7 +70,7 @@ void main()
 
     // pre-pass
     if(prd.fillGuideLayers){
-        vec3 cameraNormal = normalize(mat3(view) * worldNormal);
+        vec3 cameraNormal = normalize(mat3(ubo.currView) * worldNormal);
         cameraNormal.g *= -1;
 
         uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;

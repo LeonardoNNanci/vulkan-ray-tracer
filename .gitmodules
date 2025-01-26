@@ -4,3 +4,6 @@
 [submodule "dependencies/happly"]
 	path = dependencies/happly
 	url = https://github.com/nmwsharp/happly.git
+[submodule "dependencies/imgui"]
+	path = dependencies/imgui
+	url = https://github.com/ocornut/imgui.git

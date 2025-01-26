@@ -316,10 +316,18 @@ void Pipeline::run(std::shared_ptr<CommandBuffer> commandBuffer, vk::Extent2D ex
 
 uint32_t PushConstant::size()
 {
-    return sizeof(PushConstantData);
+    return sizeof(Contents);
 }
 
 void* PushConstant::pointer()
 {
     return &this->data;
+}
+
+void CameraData::setCurrMats(glm::mat4 proj, glm::mat4 view) {
+    currProj = proj;
+    currView = view;
+
+    currProjInv = glm::inverse(proj);
+    currViewInv = glm::inverse(view);
 }
