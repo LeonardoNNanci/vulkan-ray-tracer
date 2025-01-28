@@ -120,6 +120,15 @@ int prevIteration() {
 	return prev >= 0 ? prev : FRAMES_IN_FLIGHT - 1;
 }
 
+void updateCamera(CameraData& camera, float angle, std::shared_ptr<Presentation> presentation) {
+	auto cameraPosition = glm::vec4(-0.5, 7.5f, 0., 1.0f);
+	auto proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
+	auto view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 7.5f, 0.f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::radians(angle), glm::vec3(0., 1., 0.));
+	auto view2 = glm::rotate(glm::lookAt(glm::vec3(cameraPosition) + glm::vec3(.1, 0, 0), glm::vec3(0.f, 7.5f, 0.f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::radians(angle), glm::vec3(0., 1., 0.));
+
+	camera.setCurrMats(proj, view, proj, view2);
+}
+
 void run() {
 	auto setup = SetupBuilder()
 		.addExtensions(PresentationBuilder::getRequirements())
@@ -133,12 +142,6 @@ void run() {
 	auto commandPool = CommandPoolBuilder(setup).build();
 
 	auto deviceLimits = setup->physicalDevice.getProperties().limits;
-
-	//vk::QueryPoolCreateInfo queryPoolInfo{
-	//	.queryType = vk::QueryType::eTimestamp,
-	//	.queryCount = 12
-	//};
-	//auto queryPool = setup->device.createQueryPool(queryPoolInfo);
 
 	std::shared_ptr<Scene> scene;
 	glm::mat4 light;
@@ -187,8 +190,14 @@ void run() {
 		.descriptorCount = 1,
 		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR
 	};
-	vk::DescriptorSetLayoutBinding resultDescriptor{
+	vk::DescriptorSetLayoutBinding flowDescriptor{
 		.binding = 7,
+		.descriptorType = vk::DescriptorType::eStorageBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eCompute
+	};
+	vk::DescriptorSetLayoutBinding resultDescriptor{
+		.binding = 8,
 		.descriptorType = vk::DescriptorType::eStorageBuffer,
 		.descriptorCount = 1,
 		.stageFlags = vk::ShaderStageFlagBits::eCompute
@@ -251,18 +260,25 @@ void run() {
 		.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
 		.setCommandBuffer(commandPool->createCommandBuffer())
 		.setUsage(vk::BufferUsageFlagBits::eStorageBuffer);
+	auto flowArrayBuilder = BufferExternalBuilder(setup)
+		.setSize(WIDTH * HEIGHT * 2 * sizeof(float))
+		.setMemoryProperties(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.setCommandBuffer(commandPool->createCommandBuffer())
+		.setUsage(vk::BufferUsageFlagBits::eStorageBuffer);
 
 	std::shared_ptr<DescriptorSet> rayTracingSets[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> inputBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> albedoBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> normalBuffers[FRAMES_IN_FLIGHT];
 	std::shared_ptr<BufferExternal> resultBuffers[FRAMES_IN_FLIGHT];
+	std::shared_ptr<BufferExternal> flowBuffers[FRAMES_IN_FLIGHT];
 	auto rayTracingSetBuilder = DescriptorSetBuilder(setup)
 		.addBinding(bvhDescriptor)
 		.addBinding(rgbaImageDescriptor)
 		.addBinding(rgbDescriptor)
 		.addBinding(albedoDescriptor)
 		.addBinding(normalDescriptor)
+		.addBinding(flowDescriptor)
 		.addBinding(resultDescriptor);
 
 	vk::DescriptorSetLayoutBinding cameraBinding{
@@ -286,6 +302,7 @@ void run() {
 		albedoBuffers[i] = imageArrayBuilder.buildExternal();
 		normalBuffers[i] = imageArrayBuilder.buildExternal();
 		resultBuffers[i] = imageArrayBuilder.buildExternal();
+		flowBuffers[i] = flowArrayBuilder.buildExternal();
 
 		rayTracingSets[i] = rayTracingSetBuilder.build();
 
@@ -294,13 +311,13 @@ void run() {
 		rayTracingSets[i]->updateDescriptor(albedoDescriptor, albedoBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(resultDescriptor, resultBuffers[i]);
 		rayTracingSets[i]->updateDescriptor(normalDescriptor, normalBuffers[i]);
+		rayTracingSets[i]->updateDescriptor(flowDescriptor, flowBuffers[i]);
 
 		cameraBuffers[i] = cameraBufferBuilder.build();
 		cameraSets[i] = cameraSetBuilder.build();
 		cameraSets[i]->updateDescriptor(cameraBinding, cameraBuffers[i]);
 	}
 	
-
 	PushConstant pc;
 	pc.stagesUsed = vk::ShaderStageFlagBits::eRaygenKHR;
 
@@ -309,7 +326,6 @@ void run() {
 		.addShader("./shaders/miss.spv", vk::ShaderStageFlagBits::eMissKHR)
 		.addShader("./shaders/shadow.spv", vk::ShaderStageFlagBits::eMissKHR)
 		.addHitGroup("./shaders/closesthit.spv", "./shaders/anyhit.spv")
-		//.addHitGroup("./shaders/closesthit.spv", "./shaders/anyhit.spv")
 		.addDescriptorSet(rayTracingSets[0])
 		.addDescriptorSet(sceneSet)
 		.addDescriptorSet(cameraSets[0])
@@ -341,15 +357,14 @@ void run() {
 		.setGuideAlbedo()
 		.setGuideNormal()
 		.build();
-	//auto partialDenoiser = DenoiserBuilder(WIDTH, HEIGHT)
-	//	.setGuideAlbedo()
-	//	.build();
 
 	auto previousTime = std::chrono::high_resolution_clock::now();
 	float angle = 0;
-	//printf("LC\t\tRT\t\tA2I\t\tDenoisers\t\tFPS\n");
 
-for (int i = 0; presentation->windowIsOpen(); i++) {
+	CameraData camera;
+	updateCamera(camera, angle, presentation);
+
+	for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto& timelineTracker = timelineTrackers[iterationTracker];
 		auto& imageReadySemaphore = imageReadySemaphores[iterationTracker];
 		auto& renderFinishedSemaphore = renderFinishedSemaphores[iterationTracker];
@@ -363,23 +378,17 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		auto& inputBuffer = inputBuffers[iterationTracker];
 		auto& albedoBuffer = albedoBuffers[iterationTracker];
 		auto& normalBuffer = normalBuffers[iterationTracker];
+		auto& flowBuffer = flowBuffers[iterationTracker];
 		auto& resultBuffer = resultBuffers[iterationTracker];
 
 		auto& cameraSet = cameraSets[iterationTracker];
 		auto& cameraBuffer = cameraBuffers[iterationTracker];
 
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float deltaTime = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
 		angle += 360./1000.;
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(deltaTime).count();
-		auto cameraPosition = glm::vec4(-0.5, 10.f, 0., 1.0f);
-		auto proj = glm::perspective(glm::radians(45.0f), presentation->swapchain.extent.width / (float)presentation->swapchain.extent.height, 0.1f, 10.0f);
-		auto view = glm::rotate(glm::lookAt(glm::vec3(cameraPosition), glm::vec3(0.f, 10.f, 0.f), glm::vec3(0.0f, -1.0f, 0.0f)), glm::radians(angle), glm::vec3(0., 1., 0.));
-		previousTime = currentTime;
-
-		CameraData camera;
-		camera.setCurrMats(proj, view);
+		updateCamera(camera, angle, presentation);
 		cameraBuffer->fill<CameraData>({ camera });
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
 
 		pc.data.frame = i;
 		pc.data.time = std::chrono::duration<float>(currentTime.time_since_epoch()).count();
@@ -428,7 +437,7 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 		layoutChangeBuffer->submit();
 		layoutChangeBuffer->waitFinished();
 		rayTracingBuffer->submit();
-		fullDenoiser->run(1., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
+		fullDenoiser->run(0., inputBuffer->optixBuffer, albedoBuffer->optixBuffer, normalBuffer->optixBuffer, flowBuffer->optixBuffer, resultBuffer->optixBuffer, fullImage);
 		arrayToImgBuffer->submit();
 		setup->graphicsQueue.handle.presentKHR(presentInfo);
 	}
@@ -440,8 +449,8 @@ for (int i = 0; presentation->windowIsOpen(); i++) {
 }
 
 int main(int argc, char* argv[]) {
-	WIDTH = 900;
-	HEIGHT = 900;
+	WIDTH = 1920;
+	HEIGHT = 1080;
 	INNER_RADIUS = 1500;
 	OUTER_RADIUS = 1900;
 

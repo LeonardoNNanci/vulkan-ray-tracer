@@ -20,13 +20,6 @@ layout(set=1, binding=4) readonly buffer LightBuffer {Light l[]; } lightBuffer;
 layout(set=1, binding=5) uniform sampler2D textures[];
 hitAttributeEXT vec3 attribs;
 
-layout(set = 2, binding = 0) uniform UBO {
-    mat4 currProj;
-	mat4 currProjInv;
-	mat4 currView;
-	mat4 currViewInv;
-} ubo;
-
 void main()
 {
     // russian roulette
@@ -68,22 +61,19 @@ void main()
     
     vec3 worldNormal = normalize(TBN * texNormal);
 
+    vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
+
     // pre-pass
     if(prd.fillGuideLayers){
-        vec3 cameraNormal = normalize(mat3(ubo.currView) * worldNormal);
-        cameraNormal.g *= -1;
-
-        uint linear = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x * 3 + gl_LaunchIDEXT.x * 3;
-
         prd.albedo = albedo.rgb;
-        prd.normal = cameraNormal;
+        prd.normal = worldNormal;
+        prd.hitPoint = origin;
         return;
     }
 
     if(prd.depth>=1) return;
 
     // Direct light ------------------------
-    vec3 origin = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT).xyz;
     Light light = lightBuffer.l[0];
 
     isLit = false;

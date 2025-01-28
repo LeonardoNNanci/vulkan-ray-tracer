@@ -9,8 +9,6 @@
 #include <optix_stubs.h>
 #include <cuda_runtime_api.h>
 
-uint32_t sizeof_pixel = static_cast<uint32_t>(3 * sizeof(float));
-
 void optixLogCallback(unsigned int level, const char* tag, const char* message, void* cbdata)
 {
 	printf("OptiX [%s]: %s\n", tag, message);
@@ -82,7 +80,7 @@ CUstream DenoiserBuilder::createStream()
 }
 
 OptixDenoiser DenoiserBuilder::createDenoiser() {
-	auto kind = OPTIX_DENOISER_MODEL_KIND_HDR;
+	auto kind = OPTIX_DENOISER_MODEL_KIND_TEMPORAL;
 	
 	OptixDenoiserOptions options{
 		.guideAlbedo = this->guideAlbedo,
@@ -125,7 +123,7 @@ Denoiser::Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser ha
 {
 }
 
-void Denoiser::setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal)
+void Denoiser::setSync(cudaExternalSemaphore_t& semaphore, uint64_t waitSignal, uint64_t signalSignal)
 {
 	this->semaphore = semaphore;
 	this->waitSignal = waitSignal;
@@ -133,8 +131,20 @@ void Denoiser::setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, u
 }
 
 
-std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ivec2, glm::ivec2>> extremes, int overlap, size_t WIDTH, size_t HEIGHT)
+std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ivec2, glm::ivec2>> extremes, int overlap, size_t WIDTH, size_t HEIGHT, OptixPixelFormat pixelFormat)
 {
+	uint32_t sizeof_pixel;
+	switch (pixelFormat) {
+	case OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT2:
+		sizeof_pixel = static_cast<uint32_t>(2 * sizeof(float));
+		break;
+	case OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3:
+		sizeof_pixel = static_cast<uint32_t>(3 * sizeof(float));
+		break;
+	default:
+		throw std::runtime_error("Unsupported pixel format for OptiX Denoiser");
+	};
+
 	std::vector<OptixUtilDenoiserImageTile> tiles;
 	size_t rowStrideInBytes = WIDTH * sizeof_pixel;
 
@@ -156,14 +166,14 @@ std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ive
 		tile.input.height = inputTopRight.y - inputBottomLeft.y;
 		tile.input.pixelStrideInBytes = sizeof_pixel;
 		tile.input.rowStrideInBytes = rowStrideInBytes;
-		tile.input.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3;
+		tile.input.format = pixelFormat;
 
 		tile.output.data = (size_t)(outputBottomLeft.y * rowStrideInBytes) + (size_t)(outputBottomLeft.x * sizeof_pixel);
 		tile.output.width = outputTopRight.x - outputBottomLeft.x;
 		tile.output.height = outputTopRight.y - outputBottomLeft.y;
 		tile.output.pixelStrideInBytes = sizeof_pixel;
 		tile.output.rowStrideInBytes = rowStrideInBytes;
-		tile.output.format = OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3;
+		tile.output.format = pixelFormat;
 
 		tile.inputOffsetX = outputBottomLeft.x - inputBottomLeft.x;
 		tile.inputOffsetY = outputBottomLeft.y - inputBottomLeft.y;
@@ -174,14 +184,14 @@ std::vector<OptixUtilDenoiserImageTile> calcTiles(std::vector<std::pair<glm::ive
 	return tiles;
 }
 
-void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
+void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr opticalFlowBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
 {
 	cudaExternalSemaphoreWaitParams waitParams{	};
 	waitParams.params.fence.value = this->waitSignal;
 	if (cudaWaitExternalSemaphoresAsync(&this->semaphore, &waitParams, 1, this->stream) != CUDA_SUCCESS)
 		throw std::runtime_error("Failed to sync cuda-vulkan\n");
 
-	auto img = calcTiles({ {{0,0}, {this->width, this->height}} }, 0, this->width, this->height)[0];
+	auto img = calcTiles({ {{0,0}, {this->width, this->height}} }, 0, this->width, this->height, OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3)[0];
 	img.input.data += inputBuffer;
 	auto optResult = optixDenoiserComputeIntensity(this->handle, this->stream, &img.input, this->hdrIntensity, this->scratchBuffer, this->sizes.computeIntensitySizeInBytes);
 	if (optResult != OPTIX_SUCCESS)
@@ -189,31 +199,37 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 
 	OptixDenoiserParams params = {
 		.hdrIntensity = hdrIntensity,
-		.blendFactor = blendFactor
+		.blendFactor = blendFactor,
 	};
 
-	auto tiles = calcTiles(tileDescriptions, 0, this->width, this->height);
+	auto tiles = calcTiles(tileDescriptions, 0, this->width, this->height, OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT3);
+	auto flows = calcTiles(tileDescriptions, 0, this->width, this->height, OptixPixelFormat::OPTIX_PIXEL_FORMAT_FLOAT2);
 
 	for (int i = 0; i < tiles.size(); i++) {
 		OptixDenoiserGuideLayer guideLayer{
 			.albedo = tiles[i].input,
-			.normal = tiles[i].input
+			.normal = tiles[i].input,
+			.flow = flows[i].input
 		};
 
 		OptixDenoiserLayer layers{
 			.input = tiles[i].input,
-			.output = tiles[i].output
+			.previousOutput = tiles[i].input,
+			.output = tiles[i].output,
 		};
 
 		guideLayer.albedo.data += albedoBuffer;
 		guideLayer.normal.data += normalBuffer;
+		guideLayer.flow.data += opticalFlowBuffer;
 		layers.input.data += inputBuffer;
 		layers.output.data += outputBuffer;
+		layers.previousOutput.data += this->previousOutput ? this->previousOutput : inputBuffer;
 
 		auto optResult = optixDenoiserInvoke(this->handle, this->stream, &params, this->denoiserBuffer, this->sizes.stateSizeInBytes, &guideLayer, &layers, 1, tiles[i].inputOffsetX, tiles[i].inputOffsetY, this->scratchBuffer, this->sizes.withOverlapScratchSizeInBytes);
 		if (optResult != OPTIX_SUCCESS)
 			throw std::runtime_error("Failed to invoke denoiser\n");
 	}
+
 
 	cudaExternalSemaphoreSignalParams signalParams{};
 	signalParams.params.fence.value = this->signalSignal;
@@ -221,12 +237,13 @@ void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albed
 	if (cudaRes != CUDA_SUCCESS)
 		throw std::runtime_error("Failed to sync cuda-vulkan\n");
 
+	this->previousOutput = outputBuffer;
 }
 
 
-void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
+void Denoiser::run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr opticalFlowBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions)
 {
-	this->run(blendFactor, inputBuffer, albedoBuffer, NULL, outputBuffer, tileDescriptions);
+	this->run(blendFactor, inputBuffer, albedoBuffer, NULL, opticalFlowBuffer, outputBuffer, tileDescriptions);
 }
 
 void Denoiser::hardSynchronize()

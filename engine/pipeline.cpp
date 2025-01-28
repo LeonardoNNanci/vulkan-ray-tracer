@@ -324,10 +324,19 @@ void* PushConstant::pointer()
     return &this->data;
 }
 
-void CameraData::setCurrMats(glm::mat4 proj, glm::mat4 view) {
-    currProj = proj;
-    currView = view;
+void CameraData::setCurrMats(glm::mat4 leftProj, glm::mat4 leftView, glm::mat4 rightProj, glm::mat4 rightView) {
+    this->prevLeftProj = this->currLeftProj;
+    this->prevLeftView = this->currLeftView;
+    this->prevRightProj = this->currRightProj;
+    this->prevRightView = this->currRightView;
 
-    currProjInv = glm::inverse(proj);
-    currViewInv = glm::inverse(view);
+    this->currLeftProj = leftProj;
+    this->currLeftView = leftView;
+    this->currRightProj = rightProj;
+    this->currRightView = rightView;
+
+    this->currLeftProjInv = glm::inverse(leftProj);
+    this->currLeftViewInv = glm::inverse(leftView);
+    this->currRightProjInv = glm::inverse(rightProj);
+    this->currRightViewInv = glm::inverse(rightView);
 }

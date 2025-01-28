@@ -16,11 +16,11 @@ class Denoiser {
 public:
 	Denoiser(OptixDeviceContext context, CUstream stream, OptixDenoiser handle, uint width, uint heigth, CUdeviceptr denoiserBuffer, CUdeviceptr scratchBuffer, OptixDenoiserSizes sizes, CUdeviceptr hdrIntensity);
 
-	void setSync(cudaExternalSemaphore_t semaphore, uint64_t waitSignal, uint64_t signalSignal);
+	void setSync(cudaExternalSemaphore_t& semaphore, uint64_t waitSignal, uint64_t signalSignal);
 
-	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
+	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr normalBuffer, CUdeviceptr opticalFlowBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
 
-	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
+	void run(float blendFactor, CUdeviceptr inputBuffer, CUdeviceptr albedoBuffer, CUdeviceptr outputBuffer, CUdeviceptr opticalFlowBuffer, std::vector<std::pair<glm::ivec2, glm::ivec2>> tileDescriptions);
 
 	void hardSynchronize();
 
@@ -40,11 +40,13 @@ private:
 	CUdeviceptr denoiserBuffer;
 	CUdeviceptr scratchBuffer;
 
-	cudaExternalSemaphore_t semaphore;
+	cudaExternalSemaphore_t semaphore = NULL;
 	uint64_t waitSignal;
 	uint64_t signalSignal;
 
 	CUdeviceptr hdrIntensity;
+
+	CUdeviceptr previousOutput = NULL;
 };
 
 class DenoiserBuilder : public Builder <std::shared_ptr< Denoiser >> {

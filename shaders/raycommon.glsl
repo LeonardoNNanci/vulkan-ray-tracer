@@ -4,6 +4,7 @@ struct hitPayload
 	uint depth;
 	vec3 albedo;
 	vec3 normal;
+	vec3 hitPoint;
 	bool fillGuideLayers;
 	uint seed;
 };

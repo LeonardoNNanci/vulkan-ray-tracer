@@ -11,18 +11,23 @@
 #include <memory>
 
 struct CameraData {
-	alignas(16) glm::mat4 currProj;
-	alignas(16) glm::mat4 currProjInv;
-	alignas(16) glm::mat4 currView;
-	alignas(16) glm::mat4 currViewInv;
+	alignas(16) glm::mat4 currLeftProj;
+	alignas(16) glm::mat4 currLeftView;
+	alignas(16) glm::mat4 currRightProj;
+	alignas(16) glm::mat4 currRightView;
 
-	//alignas(16) glm::mat4 prevProj;
-	//alignas(16) glm::mat4 prevProjInv;
-	//alignas(16) glm::mat4 prevView;
-	//alignas(16) glm::mat4 prevViewInv;
+	alignas(16) glm::mat4 currLeftProjInv;
+	alignas(16) glm::mat4 currLeftViewInv;
+	alignas(16) glm::mat4 currRightProjInv;
+	alignas(16) glm::mat4 currRightViewInv;
+
+	alignas(16) glm::mat4 prevLeftProj;
+	alignas(16) glm::mat4 prevLeftView;
+	alignas(16) glm::mat4 prevRightProj;
+	alignas(16) glm::mat4 prevRightView;
 
 public:
-	void setCurrMats(glm::mat4 proj, glm::mat4 view);
+	void setCurrMats(glm::mat4 leftProj, glm::mat4 leftView, glm::mat4 rightProj, glm::mat4 rightView);
 };
 
 class PushConstant {
